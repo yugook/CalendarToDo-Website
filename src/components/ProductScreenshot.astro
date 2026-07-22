@@ -1,0 +1,43 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+  image: ImageMetadata;
+  alt: string;
+  caption: string;
+  variant?: 'hero' | 'feature' | 'privacy';
+  priority?: boolean;
+}
+
+const {
+  image,
+  alt,
+  caption,
+  variant = 'feature',
+  priority = false,
+} = Astro.props;
+const widths =
+  variant === 'hero' ? [320, 420, 520, 640] : [240, 320, 420, 520];
+const sizes =
+  variant === 'hero'
+    ? '(max-width: 760px) 76vw, 390px'
+    : '(max-width: 760px) 72vw, 290px';
+---
+
+<figure class:list={['product-shot', `product-shot--${variant}`]}>
+  <div class="screen-shell">
+    <Image
+      src={image}
+      alt={alt}
+      widths={widths}
+      sizes={sizes}
+      format="webp"
+      quality={82}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchpriority={priority ? 'high' : 'auto'}
+    />
+  </div>
+  <figcaption>{caption}</figcaption>
+</figure>

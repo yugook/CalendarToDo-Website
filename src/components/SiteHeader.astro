@@ -1,0 +1,50 @@
+---
+import { APP_STORE_URLS, LOCALE_PATHS } from '../config/site';
+import type { HomeContent, Locale } from '../i18n/types';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+
+interface Props {
+  locale: Locale;
+  content: HomeContent;
+}
+
+const { locale, content } = Astro.props;
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a
+      class="brand"
+      href={LOCALE_PATHS[locale]}
+      aria-label={content.navigation.homeLabel}
+    >
+      <img src="/favicon.png" width="32" height="32" alt="" />
+      <span>Calendar ToDo</span>
+    </a>
+
+    <nav class="site-nav" aria-label={content.navigation.label}>
+      <ul>
+        <li><a href="#features">{content.navigation.features}</a></li>
+        <li><a href="#privacy">{content.navigation.privacy}</a></li>
+        <li><a href="#developer">{content.navigation.developer}</a></li>
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      <LanguageSwitcher
+        locale={locale}
+        label={content.navigation.languageLabel}
+      />
+      <a
+        class="store-button store-button--compact"
+        href={APP_STORE_URLS[locale]}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={content.store.ariaLabel}
+      >
+        {content.store.compactLabel}
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+</header>

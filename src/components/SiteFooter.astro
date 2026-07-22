@@ -1,0 +1,43 @@
+---
+import { APP_STORE_URLS, LOCALE_PATHS } from '../config/site';
+import type { HomeContent, Locale } from '../i18n/types';
+
+interface Props {
+  locale: Locale;
+  content: HomeContent;
+}
+
+const { locale, content } = Astro.props;
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a href={LOCALE_PATHS[locale]} aria-label={content.navigation.homeLabel}>
+        Calendar ToDo
+      </a>
+      <p>{content.footer.tagline}</p>
+    </div>
+
+    <nav aria-label={content.navigation.footerLabel}>
+      <ul class="footer-links">
+        <li><a href="#features">{content.navigation.features}</a></li>
+        <li><a href="#privacy">{content.navigation.privacy}</a></li>
+        <li><a href="#developer">{content.navigation.developer}</a></li>
+        <li>
+          <a
+            href={APP_STORE_URLS[locale]}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={content.store.ariaLabel}
+          >
+            App Store ↗
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <p class="copyright">© {currentYear} Calendar ToDo</p>
+  </div>
+</footer>

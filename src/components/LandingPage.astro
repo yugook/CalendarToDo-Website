@@ -1,0 +1,164 @@
+---
+import { screenshots } from '../config/screenshots';
+import { APP_STORE_URLS } from '../config/site';
+import type { HomeContent, Locale } from '../i18n/types';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductScreenshot from './ProductScreenshot.astro';
+import SiteFooter from './SiteFooter.astro';
+import SiteHeader from './SiteHeader.astro';
+
+interface Props {
+  locale: Locale;
+  content: HomeContent;
+}
+
+const { locale, content } = Astro.props;
+const images = screenshots[locale];
+---
+
+<BaseLayout
+  locale={locale}
+  title={content.seo.title}
+  description={content.seo.description}
+  socialImageAlt={content.seo.imageAlt}
+  skipLink={content.accessibility.skipLink}
+>
+  <SiteHeader locale={locale} content={content} />
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">{content.hero.eyebrow}</p>
+          <h1 id="hero-title">{content.hero.title}</h1>
+          <p class="hero-subtitle">{content.hero.subtitle}</p>
+          <p class="hero-description">{content.hero.description}</p>
+
+          <div class="hero-actions">
+            <a
+              class="store-button"
+              href={APP_STORE_URLS[locale]}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={content.store.ariaLabel}
+            >
+              {content.store.buttonLabel}
+              <span aria-hidden="true">↗</span>
+            </a>
+            <p>{content.store.note}</p>
+          </div>
+
+          <div class="calendar-support">
+            <p>{content.hero.supportedCalendarsLabel}</p>
+            <ul>
+              {
+                content.hero.supportedCalendars.map((calendar) => (
+                  <li>{calendar}</li>
+                ))
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <ProductScreenshot
+            image={images.hero}
+            alt={content.hero.imageAlt}
+            caption={content.hero.imageCaption}
+            variant="hero"
+            priority
+          />
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="section section--tinted"
+      id="features"
+      aria-labelledby="features-title"
+    >
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">{content.features.eyebrow}</p>
+          <h2 id="features-title">{content.features.title}</h2>
+          <p>{content.features.introduction}</p>
+        </div>
+
+        <ol class="feature-grid">
+          {
+            content.features.items.map((feature, index) => (
+              <li class="feature-card">
+                <div class="feature-copy">
+                  <p class="feature-number" aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </p>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </div>
+                <ProductScreenshot
+                  image={images.features[feature.screenshot]}
+                  alt={feature.imageAlt}
+                  caption={feature.imageCaption}
+                  variant="feature"
+                />
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="privacy" aria-labelledby="privacy-title">
+      <div class="container privacy-grid">
+        <div class="privacy-visual">
+          <ProductScreenshot
+            image={images.privacy}
+            alt={content.privacy.imageAlt}
+            caption={content.privacy.imageCaption}
+            variant="privacy"
+          />
+        </div>
+
+        <div class="privacy-copy">
+          <p class="eyebrow">{content.privacy.eyebrow}</p>
+          <h2 id="privacy-title">{content.privacy.title}</h2>
+          <p class="privacy-description">{content.privacy.description}</p>
+          <ul class="privacy-points">
+            {content.privacy.points.map((point) => <li>{point}</li>)}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="section section--tinted developer-section"
+      id="developer"
+      aria-labelledby="developer-title"
+    >
+      <div class="container developer-inner">
+        <p class="eyebrow">{content.developer.eyebrow}</p>
+        <h2 id="developer-title">{content.developer.title}</h2>
+        <p>{content.developer.profile}</p>
+      </div>
+    </section>
+
+    <section class="closing" aria-labelledby="closing-title">
+      <div class="container closing-inner">
+        <h2 id="closing-title">{content.closing.title}</h2>
+        <p>{content.closing.description}</p>
+        <a
+          class="store-button"
+          href={APP_STORE_URLS[locale]}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={content.store.ariaLabel}
+        >
+          {content.store.buttonLabel}
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter locale={locale} content={content} />
+</BaseLayout>

@@ -1,0 +1,69 @@
+---
+import {
+  LOCALE_PATHS,
+  OG_IMAGE_PATHS,
+  SITE_NAME,
+  SITE_URL,
+} from '../config/site';
+import type { Locale } from '../i18n/types';
+import '../styles/global.css';
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  socialImageAlt: string;
+  skipLink: string;
+}
+
+const { locale, title, description, socialImageAlt, skipLink } = Astro.props;
+const canonicalURL = new URL(LOCALE_PATHS[locale], SITE_URL).toString();
+const socialImageURL = new URL(OG_IMAGE_PATHS[locale], SITE_URL).toString();
+const japaneseURL = new URL(LOCALE_PATHS.ja, SITE_URL).toString();
+const englishURL = new URL(LOCALE_PATHS.en, SITE_URL).toString();
+const ogLocale = locale === 'ja' ? 'ja_JP' : 'en_US';
+const alternateOgLocale = locale === 'ja' ? 'en_US' : 'ja_JP';
+---
+
+<!doctype html>
+<html lang={locale} class={`lang-${locale}`}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light" />
+    <meta name="application-name" content={SITE_NAME} />
+
+    <title>{title}</title>
+    <link rel="canonical" href={canonicalURL} />
+    <link rel="alternate" hreflang="ja" href={japaneseURL} />
+    <link rel="alternate" hreflang="en" href={englishURL} />
+    <link rel="alternate" hreflang="x-default" href={japaneseURL} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={alternateOgLocale} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={socialImageURL} />
+    <meta property="og:image:alt" content={socialImageAlt} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageURL} />
+    <meta name="twitter:image:alt" content={socialImageAlt} />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main-content">{skipLink}</a>
+    <slot />
+  </body>
+</html>
