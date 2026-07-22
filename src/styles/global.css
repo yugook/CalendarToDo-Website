@@ -27,6 +27,38 @@
   --shadow-device: 0 28px 70px rgba(0, 0, 0, 0.14);
 }
 
+@view-transition {
+  navigation: auto;
+}
+
+@keyframes page-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+::view-transition-old(root) {
+  animation: 140ms ease-out both page-fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 180ms ease-in both page-fade-in;
+}
+
 *,
 *::before,
 *::after {
@@ -885,6 +917,11 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
