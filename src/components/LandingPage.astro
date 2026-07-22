@@ -26,7 +26,7 @@ const images = screenshots[locale];
   <SiteHeader locale={locale} content={content} />
 
   <main id="main-content">
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero" id="overview" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">{content.hero.eyebrow}</p>
@@ -142,7 +142,7 @@ const images = screenshots[locale];
       </div>
     </section>
 
-    <section class="closing" aria-labelledby="closing-title">
+    <section class="closing" id="download" aria-labelledby="closing-title">
       <div class="container closing-inner">
         <h2 id="closing-title">{content.closing.title}</h2>
         <p>{content.closing.description}</p>

@@ -90,7 +90,7 @@ export const jaHome = {
   },
   developer: {
     eyebrow: 'Developer',
-    title: 'つくっている人',
+    title: '開発者について',
     profile:
       'Calendar ToDoを開発し、カレンダー予定を実行記録と振り返りに変える仕組みをつくるiOSエンジニアです。',
   },

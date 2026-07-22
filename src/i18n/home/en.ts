@@ -90,7 +90,7 @@ export const enHome = {
   },
   developer: {
     eyebrow: 'Developer',
-    title: 'Made by an independent iOS developer',
+    title: 'About the developer',
     profile:
       'I develop Calendar ToDo and build tools that turn calendar events into a record of action and reflection.',
   },

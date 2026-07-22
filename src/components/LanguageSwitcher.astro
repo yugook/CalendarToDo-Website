@@ -24,7 +24,12 @@ const localeLabels = {
               {localeLabels[option]}
             </span>
           ) : (
-            <a href={LOCALE_PATHS[option]} lang={option} hreflang={option}>
+            <a
+              href={LOCALE_PATHS[option]}
+              lang={option}
+              hreflang={option}
+              data-language-switch-link
+            >
               {localeLabels[option]}
             </a>
           )}
@@ -33,3 +38,7 @@ const localeLabels = {
     }
   </ul>
 </nav>
+
+<script>
+  import '../scripts/preserve-language-position';
+</script>
