@@ -22,9 +22,9 @@ export const enHome = {
   },
   store: {
     compactLabel: 'App Store',
-    buttonLabel: 'Find on the App Store',
-    ariaLabel: 'Search for Calendar ToDo on the App Store (opens in a new tab)',
-    note: 'The link will be updated when the official app page is available.',
+    buttonLabel: 'View on the App Store',
+    ariaLabel: 'View Calendar ToDo on the App Store (opens in a new tab)',
+    note: 'Available for iPhone.',
   },
   hero: {
     eyebrow: 'Calendar ToDo for iPhone',

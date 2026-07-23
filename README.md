@@ -31,6 +31,7 @@ npm run build
 - `src/components`: 日英で共有するページ・サイト部品
 - `src/i18n`: 型付きの日本語・英語コンテンツ
 - `src/assets/screenshots`: Webサイトで使用する言語別の実画面
+- `assets/branding`: アプリアイコンなどのブランド原本（サイトのビルド対象外）
 - `assets/marketing/app-store`: App Store用に加工した原寸素材（サイトのビルド対象外）
 - `public/og`: 言語別のOpen Graph画像
 
@@ -42,4 +43,4 @@ npm run build
 - Root directory: `/`
 - Node.js version: `24.18.0`
 
-App Storeの正式URLが確定したら、`src/config/site.ts`の`APP_STORE_URLS`を地域に依存しないアプリ固有URLへ更新してください。
+App Storeの地域別URLは、`src/config/site.ts`の`APP_STORE_URLS`で管理しています。

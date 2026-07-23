@@ -13,8 +13,7 @@ export const OG_IMAGE_PATHS = {
   en: '/og/en.png',
 } as const satisfies Record<Locale, string>;
 
-// TODO: App Storeでの公開後、Calendar ToDoのアプリ固有URLへ差し替える。
 export const APP_STORE_URLS = {
-  ja: 'https://apps.apple.com/jp/search?term=Calendar%20ToDo',
-  en: 'https://apps.apple.com/us/search?term=Calendar%20ToDo',
+  ja: 'https://apps.apple.com/jp/app/calendar-todo/id6756511434',
+  en: 'https://apps.apple.com/us/app/calendar-todo/id6756511434',
 } as const satisfies Record<Locale, string>;

@@ -22,9 +22,9 @@ export const jaHome = {
   },
   store: {
     compactLabel: 'App Store',
-    buttonLabel: 'App Storeで探す',
-    ariaLabel: 'App StoreでCalendar ToDoを検索（新しいタブで開く）',
-    note: '正式なアプリページへのリンクは準備中です。',
+    buttonLabel: 'App Storeで見る',
+    ariaLabel: 'App StoreでCalendar ToDoを見る（新しいタブで開く）',
+    note: 'iPhoneでご利用いただけます。',
   },
   hero: {
     eyebrow: 'Calendar ToDo for iPhone',
