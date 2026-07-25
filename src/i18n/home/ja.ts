@@ -24,10 +24,10 @@ export const jaHome = {
     compactLabel: 'App Store',
     buttonLabel: 'App Storeで見る',
     ariaLabel: 'App StoreでCalendar ToDoを見る（新しいタブで開く）',
-    note: 'iPhoneでご利用いただけます。',
+    note: 'iPhone・iPadでご利用いただけます。',
   },
   hero: {
-    eyebrow: 'Calendar ToDo for iPhone',
+    eyebrow: 'Calendar ToDo',
     title: '予定を入れるだけで、終わらせない。',
     subtitle: 'カレンダー予定を、実行記録と振り返りに変える。',
     description:

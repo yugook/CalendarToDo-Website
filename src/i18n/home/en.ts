@@ -24,10 +24,10 @@ export const enHome = {
     compactLabel: 'App Store',
     buttonLabel: 'View on the App Store',
     ariaLabel: 'View Calendar ToDo on the App Store (opens in a new tab)',
-    note: 'Available for iPhone.',
+    note: 'Available on iPhone and iPad.',
   },
   hero: {
-    eyebrow: 'Calendar ToDo for iPhone',
+    eyebrow: 'Calendar ToDo',
     title: "Don't let your plans end on the calendar.",
     subtitle: 'Turn calendar events into a record of action and reflection.',
     description:
