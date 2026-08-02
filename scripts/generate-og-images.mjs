@@ -6,7 +6,7 @@ const rootDirectory = resolve(import.meta.dirname, '..');
 const outputDirectory = resolve(rootDirectory, 'public/og');
 const appIconPath = resolve(rootDirectory, 'public/apple-touch-icon.png');
 const canvas = { width: 1200, height: 630 };
-const phone = { left: 730, top: 2, screenHeight: 585, rotation: -8 };
+const phone = { left: 720, top: 5, screenHeight: 560, rotation: -8 };
 
 const svg = (content) => Buffer.from(content);
 
@@ -45,20 +45,38 @@ async function createPhoneScreen(screenshotPath) {
     .png()
     .toBuffer();
 
-  return sharp({
+  const bezel = 11;
+  const buttonSpace = 5;
+  const bodyWidth = info.width + bezel * 2;
+  const bodyHeight = info.height + bezel * 2;
+  const phoneWidth = bodyWidth + buttonSpace * 2;
+  const bodyLeft = buttonSpace;
+  const shell = svg(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="${phoneWidth}" height="${bodyHeight}">
+      <rect x="${bodyLeft}" width="${bodyWidth}" height="${bodyHeight}" rx="56" fill="#17181b" stroke="#46474c" stroke-width="2" />
+      <rect x="1" y="106" width="7" height="32" rx="3.5" fill="#2a2b2f" />
+      <rect x="1" y="156" width="7" height="48" rx="3.5" fill="#2a2b2f" />
+      <rect x="1" y="216" width="7" height="48" rx="3.5" fill="#2a2b2f" />
+      <rect x="${phoneWidth - 8}" y="170" width="7" height="78" rx="3.5" fill="#2a2b2f" />
+    </svg>
+  `);
+
+  const assembledPhone = await sharp({
     create: {
-      width: info.width + 10,
-      height: info.height + 10,
+      width: phoneWidth,
+      height: bodyHeight,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
     .composite([
-      {
-        input: roundedRectangle(info.width + 10, info.height + 10, 50, '#ffffff'),
-      },
-      { input: screen, left: 5, top: 5 },
+      { input: shell },
+      { input: screen, left: bodyLeft + bezel, top: bezel },
     ])
+    .png()
+    .toBuffer();
+
+  return sharp(assembledPhone)
     .rotate(phone.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toBuffer();
