@@ -6,7 +6,7 @@ export const jaHome = {
     description:
       'Calendar ToDoは、カレンダー予定に完了・進捗を記録し、日次・週次で振り返るためのiOSアプリです。',
     imageAlt:
-      'Calendar ToDo — 予定を入れるだけで、終わらせない。',
+      'Calendar ToDoのカレンダー画面。予定ごとの進捗を記録しています。',
   },
   accessibility: {
     skipLink: '本文へ移動',

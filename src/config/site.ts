@@ -9,8 +9,8 @@ export const LOCALE_PATHS = {
 } as const satisfies Record<Locale, string>;
 
 export const OG_IMAGE_PATHS = {
-  ja: '/og/ja.png',
-  en: '/og/en.png',
+  ja: '/og/ja.png?v=3',
+  en: '/og/en.png?v=3',
 } as const satisfies Record<Locale, string>;
 
 export const APP_STORE_URLS = {

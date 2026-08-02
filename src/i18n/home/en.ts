@@ -6,7 +6,7 @@ export const enHome = {
     description:
       'Calendar ToDo is an iOS app for tracking completion and progress on calendar events, then reflecting on your days and weeks.',
     imageAlt:
-      "Calendar ToDo — Don't let your plans end on the calendar.",
+      'Calendar ToDo calendar showing progress recorded for each event.',
   },
   accessibility: {
     skipLink: 'Skip to content',
