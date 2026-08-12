@@ -1,0 +1,39 @@
+---
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { homeContent } from '../i18n';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const content = homeContent.ja;
+const notFoundPaths = {
+  ja: '/404.html',
+  en: '/404.html',
+};
+---
+
+<BaseLayout
+  locale="ja"
+  title="ページが見つかりません | Calendar ToDo"
+  description="お探しのページは見つかりませんでした。"
+  socialImageAlt={content.seo.imageAlt}
+  skipLink={content.accessibility.skipLink}
+  canonicalPath="/404.html"
+  alternatePaths={notFoundPaths}
+  robots="noindex, nofollow"
+>
+  <SiteHeader locale="ja" content={content} />
+
+  <main id="main-content" class="not-found-main">
+    <section class="container not-found-content" aria-labelledby="not-found-title">
+      <p class="eyebrow">404</p>
+      <h1 id="not-found-title">ページが見つかりません</h1>
+      <p>
+        URLが正しいかご確認ください。ページが移動または削除された可能性があります。
+      </p>
+      <p lang="en">The page you requested could not be found.</p>
+      <a class="not-found-link" href="/">トップページへ戻る</a>
+    </section>
+  </main>
+
+  <SiteFooter locale="ja" content={content} />
+</BaseLayout>

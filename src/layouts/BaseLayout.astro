@@ -16,6 +16,7 @@ interface Props {
   skipLink: string;
   canonicalPath?: string;
   alternatePaths?: Record<Locale, string>;
+  robots?: string;
 }
 
 const {
@@ -26,6 +27,7 @@ const {
   skipLink,
   canonicalPath = LOCALE_PATHS[locale],
   alternatePaths = LOCALE_PATHS,
+  robots,
 } = Astro.props;
 const canonicalURL = new URL(canonicalPath, SITE_URL).toString();
 const socialImageURL = new URL(OG_IMAGE_PATHS[locale], SITE_URL).toString();
@@ -45,6 +47,7 @@ const alternateOgLocale = locale === 'ja' ? 'en_US' : 'ja_JP';
     <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light" />
     <meta name="application-name" content={SITE_NAME} />
+    {robots && <meta name="robots" content={robots} />}
 
     <title>{title}</title>
     <link rel="canonical" href={canonicalURL} />
