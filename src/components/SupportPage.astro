@@ -1,0 +1,183 @@
+---
+import {
+  LEGAL_PATHS,
+  SUPPORT_EMAIL,
+  SUPPORT_PATHS,
+  SUPPORT_UPDATED_AT,
+} from '../config/site';
+import { homeContent } from '../i18n';
+import { supportContent } from '../i18n/support';
+import type { Locale } from '../i18n/types';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteFooter from './SiteFooter.astro';
+import SiteHeader from './SiteHeader.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const home = homeContent[locale];
+const content = supportContent[locale];
+const contactURL = `mailto:${SUPPORT_EMAIL}?subject=Calendar%20ToDo%20Support`;
+---
+
+<BaseLayout
+  locale={locale}
+  title={content.seo.title}
+  description={content.seo.description}
+  socialImageAlt={home.seo.imageAlt}
+  skipLink={home.accessibility.skipLink}
+  canonicalPath={SUPPORT_PATHS[locale]}
+  alternatePaths={SUPPORT_PATHS}
+>
+  <SiteHeader locale={locale} content={home} localePaths={SUPPORT_PATHS} />
+
+  <main id="main-content" class="support-main">
+    <article class="container support-article">
+      <header class="support-hero">
+        <p class="eyebrow">Calendar ToDo</p>
+        <h1>{content.title}</h1>
+        <p class="support-introduction">{content.introduction}</p>
+        <p class="support-updated">
+          {content.updatedLabel}: <time datetime={SUPPORT_UPDATED_AT}>{SUPPORT_UPDATED_AT}</time>
+        </p>
+        <div class="support-actions">
+          <a class="support-action support-action--primary" href={contactURL}>
+            {content.emailAction}
+          </a>
+          <a class="support-action" href={LEGAL_PATHS.privacy[locale]}>
+            {content.legal.privacy}
+          </a>
+          <a class="support-action" href={LEGAL_PATHS.terms[locale]}>
+            {content.legal.terms}
+          </a>
+        </div>
+      </header>
+
+      <section id="basic-settings" class="support-section" aria-labelledby="basic-settings-heading">
+        <div class="support-section-heading">
+          <h2 id="basic-settings-heading">{content.basicSettings.title}</h2>
+          <p>{content.basicSettings.introduction}</p>
+        </div>
+        <div class="support-card-grid">
+          {
+            content.basicSettings.items.map((item) => (
+              <article class="support-card">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <section
+        id="external-calendars"
+        class="support-section"
+        aria-labelledby="external-calendars-heading"
+      >
+        <div class="support-section-heading">
+          <h2 id="external-calendars-heading">{content.externalCalendars.title}</h2>
+        </div>
+        <div class="support-copy">
+          {content.externalCalendars.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+          <ol class="support-steps">
+            {content.externalCalendars.steps.map((step) => <li>{step}</li>)}
+          </ol>
+          <p class="support-note">{content.externalCalendars.note}</p>
+          <h3>{content.externalCalendars.helpTitle}</h3>
+          <p>{content.externalCalendars.helpIntroduction}</p>
+          <ul class="support-resource-list">
+            {
+              content.externalCalendars.links.map((link) => (
+                <li>
+                  <a href={link.href}>
+                    <span>{link.label}</span>
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </section>
+
+      <section id="faq" class="support-section" aria-labelledby="faq-heading">
+        <div class="support-section-heading">
+          <h2 id="faq-heading">{content.faq.title}</h2>
+        </div>
+        <div class="support-faq">
+          {
+            content.faq.items.map((item) => (
+              <details>
+                <summary>{item.question}</summary>
+                <div class="support-faq-answer">
+                  {item.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+                  {item.links && (
+                    <ul>
+                      {item.links.map((link) => (
+                        <li><a href={link.href}>{link.label}</a></li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+
+      <section
+        id="troubleshooting"
+        class="support-section"
+        aria-labelledby="troubleshooting-heading"
+      >
+        <div class="support-section-heading">
+          <h2 id="troubleshooting-heading">{content.troubleshooting.title}</h2>
+        </div>
+        <ul class="support-checklist">
+          {content.troubleshooting.items.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+
+      <section
+        id="contact"
+        class="support-section support-contact"
+        aria-labelledby="contact-heading"
+      >
+        <div class="support-section-heading">
+          <h2 id="contact-heading">{content.contact.title}</h2>
+          <p>{content.contact.introduction}</p>
+        </div>
+        <ul class="support-checklist">
+          {content.contact.items.map((item) => <li>{item}</li>)}
+        </ul>
+        <p class="support-contact-link">
+          {content.contact.label}: <a href={contactURL}>{SUPPORT_EMAIL}</a>
+        </p>
+      </section>
+
+      <section
+        id="privacy-legal"
+        class="support-section support-legal"
+        aria-labelledby="privacy-legal-heading"
+      >
+        <div class="support-section-heading">
+          <h2 id="privacy-legal-heading">{content.legal.title}</h2>
+          <p>{content.legal.introduction}</p>
+        </div>
+        <div class="support-actions">
+          <a class="support-action" href={LEGAL_PATHS.privacy[locale]}>
+            {content.legal.privacy}
+          </a>
+          <a class="support-action" href={LEGAL_PATHS.terms[locale]}>
+            {content.legal.terms}
+          </a>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <SiteFooter locale={locale} content={home} />
+</BaseLayout>

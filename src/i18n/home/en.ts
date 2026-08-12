@@ -19,6 +19,7 @@ export const enHome = {
     features: 'Features',
     privacy: 'Privacy',
     developer: 'Developer',
+    support: 'Support',
     terms: 'Terms of Service',
     privacyPolicy: 'Privacy Policy',
   },
