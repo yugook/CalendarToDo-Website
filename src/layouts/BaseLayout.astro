@@ -14,13 +14,25 @@ interface Props {
   description: string;
   socialImageAlt: string;
   skipLink: string;
+  canonicalPath?: string;
+  alternatePaths?: Record<Locale, string>;
+  robots?: string;
 }
 
-const { locale, title, description, socialImageAlt, skipLink } = Astro.props;
-const canonicalURL = new URL(LOCALE_PATHS[locale], SITE_URL).toString();
+const {
+  locale,
+  title,
+  description,
+  socialImageAlt,
+  skipLink,
+  canonicalPath = LOCALE_PATHS[locale],
+  alternatePaths = LOCALE_PATHS,
+  robots,
+} = Astro.props;
+const canonicalURL = new URL(canonicalPath, SITE_URL).toString();
 const socialImageURL = new URL(OG_IMAGE_PATHS[locale], SITE_URL).toString();
-const japaneseURL = new URL(LOCALE_PATHS.ja, SITE_URL).toString();
-const englishURL = new URL(LOCALE_PATHS.en, SITE_URL).toString();
+const japaneseURL = new URL(alternatePaths.ja, SITE_URL).toString();
+const englishURL = new URL(alternatePaths.en, SITE_URL).toString();
 const ogLocale = locale === 'ja' ? 'ja_JP' : 'en_US';
 const alternateOgLocale = locale === 'ja' ? 'en_US' : 'ja_JP';
 ---
@@ -35,6 +47,7 @@ const alternateOgLocale = locale === 'ja' ? 'en_US' : 'ja_JP';
     <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light" />
     <meta name="application-name" content={SITE_NAME} />
+    {robots && <meta name="robots" content={robots} />}
 
     <title>{title}</title>
     <link rel="canonical" href={canonicalURL} />

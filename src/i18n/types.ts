@@ -28,6 +28,8 @@ export interface HomeContent {
     features: string;
     privacy: string;
     developer: string;
+    terms: string;
+    privacyPolicy: string;
   };
   store: {
     compactLabel: string;

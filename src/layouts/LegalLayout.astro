@@ -1,0 +1,64 @@
+---
+import { homeContent } from '../i18n';
+import type { Locale } from '../i18n/types';
+import BaseLayout from './BaseLayout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+
+interface LegalFrontmatter {
+  locale: Locale;
+  title: string;
+  description: string;
+  documentTitle: string;
+  updatedAt: string;
+  canonicalPath: string;
+  alternatePaths: Record<Locale, string>;
+}
+
+interface Props {
+  frontmatter: LegalFrontmatter;
+}
+
+const { frontmatter } = Astro.props;
+const {
+  locale,
+  title,
+  description,
+  documentTitle,
+  updatedAt,
+  canonicalPath,
+  alternatePaths,
+} = frontmatter;
+const content = homeContent[locale];
+const updatedLabel = locale === 'ja' ? '最終更新日' : 'Last updated';
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  socialImageAlt={content.seo.imageAlt}
+  skipLink={content.accessibility.skipLink}
+  canonicalPath={canonicalPath}
+  alternatePaths={alternatePaths}
+>
+  <SiteHeader locale={locale} content={content} localePaths={alternatePaths} />
+
+  <main id="main-content" class="legal-main">
+    <article class="container legal-article">
+      <header class="legal-hero">
+        <p class="eyebrow">Calendar ToDo</p>
+        <h1>{documentTitle}</h1>
+        <p class="legal-updated">
+          {updatedLabel}: <time datetime={updatedAt}>{updatedAt}</time>
+        </p>
+      </header>
+
+      <div class="legal-content">
+        <slot />
+      </div>
+    </article>
+  </main>
+
+  <SiteFooter locale={locale} content={content} />
+</BaseLayout>

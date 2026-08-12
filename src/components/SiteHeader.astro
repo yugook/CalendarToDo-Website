@@ -6,9 +6,11 @@ import LanguageSwitcher from './LanguageSwitcher.astro';
 interface Props {
   locale: Locale;
   content: HomeContent;
+  localePaths?: Record<Locale, string>;
 }
 
-const { locale, content } = Astro.props;
+const { locale, content, localePaths } = Astro.props;
+const homePath = LOCALE_PATHS[locale];
 ---
 
 <header class="site-header">
@@ -24,9 +26,9 @@ const { locale, content } = Astro.props;
 
     <nav class="site-nav" aria-label={content.navigation.label}>
       <ul>
-        <li><a href="#features">{content.navigation.features}</a></li>
-        <li><a href="#privacy">{content.navigation.privacy}</a></li>
-        <li><a href="#developer">{content.navigation.developer}</a></li>
+        <li><a href={`${homePath}#features`}>{content.navigation.features}</a></li>
+        <li><a href={`${homePath}#privacy`}>{content.navigation.privacy}</a></li>
+        <li><a href={`${homePath}#developer`}>{content.navigation.developer}</a></li>
       </ul>
     </nav>
 
@@ -34,6 +36,7 @@ const { locale, content } = Astro.props;
       <LanguageSwitcher
         locale={locale}
         label={content.navigation.languageLabel}
+        paths={localePaths}
       />
       <a
         class="store-button store-button--compact"

@@ -8,6 +8,22 @@ export const LOCALE_PATHS = {
   en: '/en/',
 } as const satisfies Record<Locale, string>;
 
+export const LEGAL_PATHS = {
+  terms: {
+    ja: '/terms/',
+    en: '/en/terms/',
+  },
+  privacy: {
+    ja: '/privacy/',
+    en: '/en/privacy/',
+  },
+  policy: '/legal/policy.json',
+} as const satisfies {
+  terms: Record<Locale, string>;
+  privacy: Record<Locale, string>;
+  policy: string;
+};
+
 export const OG_IMAGE_PATHS = {
   ja: '/og/ja.png?v=4',
   en: '/og/en.png?v=4',
