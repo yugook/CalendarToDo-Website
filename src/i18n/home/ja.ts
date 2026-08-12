@@ -19,6 +19,7 @@ export const jaHome = {
     features: '特徴',
     privacy: 'プライバシー',
     developer: '開発者',
+    support: 'サポート',
     terms: '利用規約',
     privacyPolicy: 'プライバシーポリシー',
   },

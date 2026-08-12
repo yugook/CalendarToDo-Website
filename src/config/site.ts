@@ -24,6 +24,14 @@ export const LEGAL_PATHS = {
   policy: string;
 };
 
+export const SUPPORT_PATHS = {
+  ja: '/support/',
+  en: '/en/support/',
+} as const satisfies Record<Locale, string>;
+
+export const SUPPORT_EMAIL = 'yugo.work.contact@gmail.com';
+export const SUPPORT_UPDATED_AT = '2026-06-11';
+
 export const OG_IMAGE_PATHS = {
   ja: '/og/ja.png?v=4',
   en: '/og/en.png?v=4',

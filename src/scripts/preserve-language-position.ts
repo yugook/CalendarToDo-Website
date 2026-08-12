@@ -10,7 +10,7 @@ const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(Math.max(value, minimum), maximum);
 
 const getSections = () =>
-  Array.from(document.querySelectorAll<HTMLElement>('main > section[id]'));
+  Array.from(document.querySelectorAll<HTMLElement>('main section[id]'));
 
 const getCurrentSection = () => {
   const sections = getSections();
@@ -19,7 +19,7 @@ const getCurrentSection = () => {
 
   return sections.reduce<HTMLElement | undefined>((current, section) => {
     return section.offsetTop <= referencePosition ? section : current;
-  }, sections[0]);
+  }, undefined);
 };
 
 const savePosition = (link: HTMLAnchorElement) => {

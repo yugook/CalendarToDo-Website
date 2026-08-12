@@ -1,5 +1,10 @@
 import type { APIRoute } from 'astro';
-import { LEGAL_PATHS, SITE_URL } from '../../config/site';
+import {
+  LEGAL_PATHS,
+  SITE_URL,
+  SUPPORT_PATHS,
+  SUPPORT_UPDATED_AT,
+} from '../../config/site';
 
 export const prerender = true;
 
@@ -18,6 +23,11 @@ export const GET: APIRoute = () => {
       version: policyVersion,
       url_en: absoluteURL(LEGAL_PATHS.privacy.en),
       url_ja: absoluteURL(LEGAL_PATHS.privacy.ja),
+    },
+    support: {
+      version: SUPPORT_UPDATED_AT,
+      url_en: absoluteURL(SUPPORT_PATHS.en),
+      url_ja: absoluteURL(SUPPORT_PATHS.ja),
     },
   };
 

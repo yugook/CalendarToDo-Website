@@ -28,6 +28,7 @@ export interface HomeContent {
     features: string;
     privacy: string;
     developer: string;
+    support: string;
     terms: string;
     privacyPolicy: string;
   };
