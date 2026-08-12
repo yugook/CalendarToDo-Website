@@ -19,6 +19,8 @@ export const enHome = {
     features: 'Features',
     privacy: 'Privacy',
     developer: 'Developer',
+    terms: 'Terms of Service',
+    privacyPolicy: 'Privacy Policy',
   },
   store: {
     compactLabel: 'App Store',

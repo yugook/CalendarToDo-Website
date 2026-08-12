@@ -5,9 +5,10 @@ import { locales, type Locale } from '../i18n/types';
 interface Props {
   locale: Locale;
   label: string;
+  paths?: Record<Locale, string>;
 }
 
-const { locale, label } = Astro.props;
+const { locale, label, paths = LOCALE_PATHS } = Astro.props;
 const localeLabels = {
   ja: '日本語',
   en: 'English',
@@ -25,7 +26,7 @@ const localeLabels = {
             </span>
           ) : (
             <a
-              href={LOCALE_PATHS[option]}
+              href={paths[option]}
               lang={option}
               hreflang={option}
               data-language-switch-link

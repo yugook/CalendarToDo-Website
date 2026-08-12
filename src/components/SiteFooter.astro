@@ -1,5 +1,5 @@
 ---
-import { APP_STORE_URLS, LOCALE_PATHS } from '../config/site';
+import { APP_STORE_URLS, LEGAL_PATHS, LOCALE_PATHS } from '../config/site';
 import type { HomeContent, Locale } from '../i18n/types';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
 
 const { locale, content } = Astro.props;
 const currentYear = new Date().getFullYear();
+const homePath = LOCALE_PATHS[locale];
 ---
 
 <footer class="site-footer">
@@ -22,9 +23,15 @@ const currentYear = new Date().getFullYear();
 
     <nav aria-label={content.navigation.footerLabel}>
       <ul class="footer-links">
-        <li><a href="#features">{content.navigation.features}</a></li>
-        <li><a href="#privacy">{content.navigation.privacy}</a></li>
-        <li><a href="#developer">{content.navigation.developer}</a></li>
+        <li><a href={`${homePath}#features`}>{content.navigation.features}</a></li>
+        <li><a href={`${homePath}#privacy`}>{content.navigation.privacy}</a></li>
+        <li><a href={`${homePath}#developer`}>{content.navigation.developer}</a></li>
+        <li><a href={LEGAL_PATHS.terms[locale]}>{content.navigation.terms}</a></li>
+        <li>
+          <a href={LEGAL_PATHS.privacy[locale]}>
+            {content.navigation.privacyPolicy}
+          </a>
+        </li>
         <li>
           <a
             href={APP_STORE_URLS[locale]}

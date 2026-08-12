@@ -19,6 +19,8 @@ export const jaHome = {
     features: '特徴',
     privacy: 'プライバシー',
     developer: '開発者',
+    terms: '利用規約',
+    privacyPolicy: 'プライバシーポリシー',
   },
   store: {
     compactLabel: 'App Store',
