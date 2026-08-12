@@ -19,7 +19,7 @@ const getCurrentSection = () => {
 
   return sections.reduce<HTMLElement | undefined>((current, section) => {
     return section.offsetTop <= referencePosition ? section : current;
-  }, sections[0]);
+  }, undefined);
 };
 
 const savePosition = (link: HTMLAnchorElement) => {
