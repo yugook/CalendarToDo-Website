@@ -38,6 +38,11 @@ export interface HomeContent {
     ariaLabel: string;
     note: string;
   };
+  social: {
+    navigationLabel: string;
+    instagramLabel: string;
+    githubLabel: string;
+  };
   hero: {
     eyebrow: string;
     title: string;

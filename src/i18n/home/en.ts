@@ -29,6 +29,11 @@ export const enHome = {
     ariaLabel: 'View Calendar ToDo on the App Store (opens in a new tab)',
     note: 'Available on iPhone and iPad.',
   },
+  social: {
+    navigationLabel: 'External links',
+    instagramLabel: 'Calendar ToDo on Instagram (opens in a new tab)',
+    githubLabel: "Developer's GitHub (opens in a new tab)",
+  },
   hero: {
     eyebrow: 'Calendar ToDo',
     title: "Don't let your plans end on the calendar.",
