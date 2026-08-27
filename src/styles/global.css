@@ -692,7 +692,7 @@ a {
   height: 20px;
 }
 
-.footer-social-link svg:first-child {
+.footer-social-link--instagram svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
