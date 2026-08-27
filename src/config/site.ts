@@ -41,3 +41,8 @@ export const APP_STORE_URLS = {
   ja: 'https://apps.apple.com/jp/app/calendar-todo/id6756511434',
   en: 'https://apps.apple.com/us/app/calendar-todo/id6756511434',
 } as const satisfies Record<Locale, string>;
+
+export const SOCIAL_LINKS = {
+  instagram: 'https://www.instagram.com/calendartodo.app/?hl=ja',
+  github: 'https://github.com/yugook',
+} as const;

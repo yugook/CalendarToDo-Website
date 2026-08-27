@@ -29,6 +29,11 @@ export const jaHome = {
     ariaLabel: 'App StoreでCalendar ToDoを見る（新しいタブで開く）',
     note: 'iPhone・iPadでご利用いただけます。',
   },
+  social: {
+    navigationLabel: '外部リンク',
+    instagramLabel: 'Calendar ToDoのInstagram（新しいタブで開く）',
+    githubLabel: '開発者のGitHub（新しいタブで開く）',
+  },
   hero: {
     eyebrow: 'Calendar ToDo',
     title: '予定を入れるだけで、終わらせない。',

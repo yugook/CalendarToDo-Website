@@ -697,6 +697,51 @@ a {
   font-size: 0.78rem;
 }
 
+.footer-socials {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.footer-social-link {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.footer-social-link:hover {
+  border-color: rgba(29, 29, 31, 0.28);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.footer-social-link svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.footer-social-link--instagram svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.footer-social-icon-dot {
+  fill: currentColor;
+  stroke: none;
+}
+
 .footer-links {
   flex-wrap: wrap;
   justify-content: flex-end;
