@@ -32,6 +32,7 @@ export const enHome = {
   social: {
     navigationLabel: 'External links',
     instagramLabel: 'Calendar ToDo on Instagram (Japanese, opens in a new tab)',
+    youtubeLabel: "Developer's YouTube (opens in a new tab)",
     githubLabel: "Developer's GitHub (opens in a new tab)",
   },
   hero: {

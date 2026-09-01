@@ -32,6 +32,7 @@ export const jaHome = {
   social: {
     navigationLabel: '外部リンク',
     instagramLabel: 'Calendar ToDoのInstagram（新しいタブで開く）',
+    youtubeLabel: '開発者のYouTube（新しいタブで開く）',
     githubLabel: '開発者のGitHub（新しいタブで開く）',
   },
   hero: {

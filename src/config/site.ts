@@ -44,5 +44,6 @@ export const APP_STORE_URLS = {
 
 export const SOCIAL_LINKS = {
   instagram: 'https://www.instagram.com/calendartodo.app/?hl=ja',
+  youtube: 'https://www.youtube.com/@Yugook_Dev_Log',
   github: 'https://github.com/yugook',
 } as const;

@@ -41,6 +41,7 @@ export interface HomeContent {
   social: {
     navigationLabel: string;
     instagramLabel: string;
+    youtubeLabel: string;
     githubLabel: string;
   };
   hero: {
