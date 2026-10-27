@@ -43,4 +43,19 @@ npm run build
 - Root directory: `/`
 - Node.js version: `24.18.0`
 
+### セキュリティヘッダー
+
+`public/_headers`をビルド時に`dist/_headers`へコピーし、Cloudflare Pagesの静的レスポンスに適用します。`X-Frame-Options: DENY`で埋め込みを禁止し、`Permissions-Policy`でカメラ・マイク・位置情報へのアクセスを無効にしています。
+
+CSPは`Content-Security-Policy-Report-Only`で導入しています。この段階では違反を報告するだけで、コンテンツの読み込みは遮断しません。スクリプトとスタイルは外部ファイルとして出力し、インライン実行の許可は加えていません。
+
+Cloudflareのプレビュー環境で、次を確認してから強制適用へ進めます。Astroの開発・プレビューサーバーでは`_headers`が適用されないため、ビルド成功だけでは公開ヘッダーの検証になりません。
+
+1. `npm run check`と`npm run build`が成功し、`public/_headers`と`dist/_headers`が一致する。
+2. プレビューURLのトップ・サポート・規約・プライバシーの日英ページ、`/404.html`、`/legal/policy.json`、存在しないパスの応答ヘッダーを確認する。
+3. ブラウザーのConsoleでCSP違反を確認し、画像・スタイルの表示、言語切替時のセクションとスクロール位置の復元を確認する。Cloudflare側でスクリプトが自動挿入される場合も、ここで影響を確認する。
+4. 必要な修正と確認が完了したら、`_headers`のヘッダー名を`Content-Security-Policy`に変更し、同じ項目を再確認する。
+
+現在はCSPレポートの収集先を設定していません。違反はブラウザーで確認し、集中収集が必要になった場合は実際の受信先を用意してから設定を追加します。
+
 App Storeの地域別URLは、`src/config/site.ts`の`APP_STORE_URLS`で管理しています。
