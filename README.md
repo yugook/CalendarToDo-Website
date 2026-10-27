@@ -23,7 +23,12 @@ npm run dev
 ```sh
 npm run check
 npm run build
+npm run test:smoke
 ```
+
+`test:smoke`はビルド後に実行します。一時的なローカルサーバーを自動起動・停止し、日英8ページ、言語リンク、ポリシーJSON、404、画像・CSS・JavaScriptの配信と`_headers`のコピーを検証します。追加のサービスや認証情報は不要です。
+
+GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブランチ保護でCIを必須にする場合は、`Site checks`を必須チェックに指定してください。
 
 ## ディレクトリ
 
