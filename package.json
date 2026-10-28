@@ -11,6 +11,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "check": "astro check",
+    "check:dist": "node scripts/check-dist.mjs",
+    "test:automation": "node --test tests/dependabot-auto-merge.test.mjs",
     "test:smoke": "node --test scripts/smoke-test.mjs",
     "generate:og": "node scripts/generate-og-images.mjs",
     "preview": "astro preview",

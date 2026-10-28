@@ -1,0 +1,132 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # Never check out PR code or install its dependencies in this workflow.
+      - name: Verify Dependabot commits and read metadata
+        if: vars.DEPENDABOT_AUTO_MERGE_ENABLED == 'true'
+        id: metadata
+        continue-on-error: true
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Apply patch-only auto-merge policy
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTO_MERGE_ENABLED: ${{ vars.DEPENDABOT_AUTO_MERGE_ENABLED }}
+          METADATA_OUTCOME: ${{ steps.metadata.outcome }}
+          UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const expectedHead = context.payload.pull_request.head.sha;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+
+            // Revoke our previous request before re-evaluating a changed PR.
+            // Leave any auto-merge explicitly enabled by a maintainer alone.
+            if (pr.auto_merge?.enabled_by?.login === 'github-actions[bot]') {
+              await github.graphql(`
+                mutation($id: ID!) {
+                  disablePullRequestAutoMerge(input: {pullRequestId: $id}) {
+                    pullRequest { number }
+                  }
+                }
+              `, { id: pr.node_id });
+            }
+
+            const skip = (reason) => core.info(`Manual review required: ${reason}`);
+            if (process.env.AUTO_MERGE_ENABLED !== 'true') {
+              return skip('auto-merge has not been enabled by a maintainer');
+            }
+            if (pr.state !== 'open' || pr.draft || pr.base.ref !== 'main' ||
+                pr.user.login !== 'dependabot[bot]' ||
+                pr.head.repo?.full_name !== `${owner}/${repo}` ||
+                pr.head.sha !== expectedHead) {
+              return skip('PR identity, base, state, or head has changed');
+            }
+            // The pinned fetch-metadata action verifies and parses commits[0].
+            // With exactly one PR commit, that commit is the complete head.
+            if (pr.commits !== 1) {
+              return skip('PR must contain exactly one commit to bind metadata to its head');
+            }
+            if (process.env.METADATA_OUTCOME !== 'success') {
+              return skip('Dependabot metadata or commit verification failed');
+            }
+
+            let dependencies;
+            try {
+              dependencies = JSON.parse(process.env.UPDATED_DEPENDENCIES);
+            } catch {
+              return skip('metadata is missing or malformed');
+            }
+            const isPatch = (dependency) => {
+              const previous = /^(\d+)\.(\d+)\.(\d+)$/.exec(dependency?.prevVersion);
+              const next = /^(\d+)\.(\d+)\.(\d+)$/.exec(dependency?.newVersion);
+              return dependency?.packageEcosystem === 'npm_and_yarn' &&
+                dependency.directory === '/' &&
+                dependency.updateType === 'version-update:semver-patch' &&
+                previous && next && previous[1] === next[1] &&
+                previous[2] === next[2] && BigInt(next[3]) > BigInt(previous[3]);
+            };
+            if (!Array.isArray(dependencies) || dependencies.length === 0 ||
+                !dependencies.every(isPatch)) {
+              return skip('every dependency must be a stable npm patch upgrade');
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number, per_page: 100,
+            });
+            const allowedFiles = new Set(['package.json', 'package-lock.json']);
+            if (files.length === 0 || files.length !== pr.changed_files ||
+                !files.every((file) => allowedFiles.has(file.filename) && file.status === 'modified')) {
+              return skip('changes are not limited to existing npm manifests');
+            }
+
+            // Read effective rules without administration permissions. Fail closed
+            // until both checks are required and the branch must be up to date.
+            const rules = await github.paginate('GET /repos/{owner}/{repo}/rules/branches/{branch}', {
+              owner, repo, branch: 'main', per_page: 100,
+            });
+            const requiredChecks = [
+              { context: 'Validate', integration_id: 15368 }, // GitHub Actions
+              { context: 'Cloudflare Pages', integration_id: 85455 },
+            ];
+            const checksRequired = rules.some((rule) =>
+              rule.type === 'required_status_checks' &&
+              rule.parameters?.strict_required_status_checks_policy === true &&
+              requiredChecks.every((expected) => rule.parameters.required_status_checks?.some(
+                (check) => check.context === expected.context &&
+                  check.integration_id === expected.integration_id,
+              )),
+            );
+            if (!checksRequired || !rules.some((rule) => rule.type === 'pull_request') ||
+                !rules.some((rule) => rule.type === 'required_signatures')) {
+              return skip('required checks, up-to-date policy, PR rule, or signature rule is missing');
+            }
+
+            // GitHub enforces required checks and review rules. The CLI also
+            // checks that the PR still has the head whose metadata we verified.
+            await exec.exec('gh', [
+              'pr', 'merge', String(pull_number), '--repo', `${owner}/${repo}`,
+              '--auto', '--merge', '--match-head-commit', expectedHead,
+            ]);
