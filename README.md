@@ -40,6 +40,7 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 
 - npmのパッチ更新だけをオートマージ対象にします。複数の依存を含むセキュリティ更新では、すべてがパッチ更新であることが条件です。
 - マイナー・メジャー更新、`0.x`のマイナー更新、プレリリース、GitHub Actions更新は手動レビューします。
+- 自動マージはコミットが1件のPRに限ります。追加コミットがあるPRは、元のDependabot更新がパッチ更新でも手動レビューします。
 - セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
 - `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
 
@@ -53,11 +54,12 @@ CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ
 2. GitHubのSettings → Rules → Rulesetsから既存の`main`ルールを編集します。署名・PR必須・会話解決・削除禁止・force push禁止の設定は維持し、次を追加します。
    - Require status checks to pass: `Validate`（提供元GitHub Actions、App ID `15368`）と`Cloudflare Pages`（提供元Cloudflare Workers and Pages、App ID `85455`）。提供元を`Any source`にせず、各アプリに限定します。
    - Require branches to be up to date before merging: 有効。
-3. Settingsのセキュリティ設定でDependency graph、Dependabot alerts、Dependabot security updatesを有効にします。セキュリティ更新は週次の通常更新とは別に処理されます。
-4. Settings → Secrets and variables → Actions → Variablesに、リポジトリ変数`DEPENDABOT_AUTO_MERGE_ENABLED`を値`true`で追加します。
-5. 最初のDependabotパッチPRで、署名・両チェック・merge commitでのマージを確認します。既存PRを評価し直す場合は、オートマージ用ワークフローを再実行するかPRを再オープンします。
+3. Settings → General → Pull Requestsで`Allow auto-merge`を有効にします。これはGitHub側で自動マージを許可する設定で、後述のリポジトリ変数とは別に必要です。
+4. Settingsのセキュリティ設定でDependency graph、Dependabot alerts、Dependabot security updatesを有効にします。セキュリティ更新は週次の通常更新とは別に処理されます。
+5. Settings → Secrets and variables → Actions → Variablesに、リポジトリ変数`DEPENDABOT_AUTO_MERGE_ENABLED`を値`true`で追加します。
+6. 最初のDependabotパッチPRで、署名・両チェック・merge commitでのマージを確認します。既存PRを評価し直す場合は、オートマージ用ワークフローを再実行するかPRを再オープンします。
 
-オートマージ用ワークフローは`pull_request_target`で動作し、PRのコードをcheckoutしたり依存をインストールしたりしません。Dependabot作成・同一リポジトリ・`main`向けのPRに限定し、Dependabotのコミット署名と更新情報、`package.json` / `package-lock.json`以外を変更していないことを確認します。さらにGitHub APIで有効なブランチルールを読み、上記の必須チェック・最新ブランチ必須・署名・PR必須を確認できない場合は自動マージしません。
+オートマージ用ワークフローは`pull_request_target`で動作し、PRのコードをcheckoutしたり依存をインストールしたりしません。Dependabot作成・同一リポジトリ・`main`向けで、コミットが1件のPRに限定し、Dependabotのコミット署名と更新情報、`package.json` / `package-lock.json`以外を変更していないことを確認します。署名・更新情報の取得に使うアクションは先頭コミットだけを検証するため、コミットが1件であることとhead SHAが一致することを組み合わせ、検証対象をPRの変更全体に一致させます。コミット数が取得できない場合も自動マージしません。さらにGitHub APIで有効なブランチルールを読み、上記の必須チェック・最新ブランチ必須・署名・PR必須を確認できない場合は自動マージしません。
 
 条件を満たすPRだけに、確認したhead SHAを指定して`gh pr merge --auto --merge`を実行します。チェック完了前ならGitHubのオートマージで待機し、完了済みならその時点でマージします。署名・会話解決などのルールを迂回せず、自動承認も行いません。PRの更新時は、このワークフローが以前設定したオートマージを解除してから判定し直します。検証失敗や対象外の更新は手動レビューに残します。
 

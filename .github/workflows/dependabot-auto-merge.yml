@@ -64,6 +64,11 @@ jobs:
                 pr.head.sha !== expectedHead) {
               return skip('PR identity, base, state, or head has changed');
             }
+            // The pinned fetch-metadata action verifies and parses commits[0].
+            // With exactly one PR commit, that commit is the complete head.
+            if (pr.commits !== 1) {
+              return skip('PR must contain exactly one commit to bind metadata to its head');
+            }
             if (process.env.METADATA_OUTCOME !== 'success') {
               return skip('Dependabot metadata or commit verification failed');
             }

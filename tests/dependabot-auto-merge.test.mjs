@@ -41,6 +41,7 @@ function fixture() {
     user: { login: 'dependabot[bot]' },
     base: { ref: 'main' },
     head: { sha: 'a'.repeat(40), repo: { full_name: 'yugook/CalendarToDo-Website' } },
+    commits: 1,
     changed_files: 2,
     auto_merge: null,
   };
@@ -100,6 +101,18 @@ test('all dependencies in a multi-dependency security update must be patch upgra
   assert.equal(state.commands.length, 1);
 });
 
+test('rejects an added commit even when the original patch metadata and current head checks pass', async () => {
+  const state = fixture();
+  // fetch-metadata still describes the original patch after a maintainer adds
+  // another manifest change. The synchronize event already contains the new head.
+  state.pr.commits = 2;
+  state.pr.head.sha = 'b'.repeat(40);
+  state.context.payload.pull_request = structuredClone(state.pr);
+  await state.run();
+  assert.equal(state.commands.length, 0);
+  assert.match(state.messages.at(-1), /exactly one commit/);
+});
+
 const ineligible = {
   'opt-in is unset': (s) => { delete s.env.AUTO_MERGE_ENABLED; },
   'opt-in is false': (s) => { s.env.AUTO_MERGE_ENABLED = 'false'; },
@@ -116,6 +129,10 @@ const ineligible = {
   'PR is from a fork': (s) => { s.pr.head.repo.full_name = 'someone/fork'; },
   'head repository was deleted': (s) => { s.pr.head.repo = null; },
   'head changed since the triggering event': (s) => { s.pr.head.sha = 'b'.repeat(40); },
+  'PR has no commits': (s) => { s.pr.commits = 0; },
+  'commit count is missing': (s) => { delete s.pr.commits; },
+  'commit count is null': (s) => { s.pr.commits = null; },
+  'commit count is not a number': (s) => { s.pr.commits = '1'; },
   'source file was changed': (s) => { s.files[1].filename = 'src/pages/index.astro'; },
   'manifest was renamed': (s) => { s.files[1].status = 'renamed'; },
   'manifest was added': (s) => { s.files[1].status = 'added'; },
@@ -165,6 +182,17 @@ test('re-evaluates our pending auto-merge and revokes it when verification fails
   const state = fixture();
   state.pr.auto_merge = { enabled_by: { login: 'github-actions[bot]' } };
   state.env.METADATA_OUTCOME = 'failure';
+  await state.run();
+  assert.equal(state.commands.length, 0);
+  assert.equal(state.mutations.length, 1);
+  assert.match(state.mutations[0].query, /disablePullRequestAutoMerge/);
+  assert.deepEqual(state.mutations[0].variables, { id: 'PR_test' });
+});
+
+test('revokes our pending auto-merge when an extra commit is appended', async () => {
+  const state = fixture();
+  state.pr.auto_merge = { enabled_by: { login: 'github-actions[bot]' } };
+  state.pr.commits = 2;
   await state.run();
   assert.equal(state.commands.length, 0);
   assert.equal(state.mutations.length, 1);
