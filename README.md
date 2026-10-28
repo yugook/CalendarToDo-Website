@@ -25,9 +25,14 @@ npm run check
 npm run build
 npm run check:dist
 npm run test:automation
+npm run test:smoke
 ```
 
 `check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーやブラウザー表示は、後述のプレビュー検証で確認します。
+
+`test:smoke`はビルド後に実行します。一時的なローカルサーバーを自動起動・停止し、日英8ページ、言語リンク、ポリシーJSON、404、画像・CSS・JavaScriptの配信と`_headers`のコピーを検証します。追加のサービスや認証情報は不要です。
+
+GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブランチ保護でCIを必須にする場合は、`Validate`を必須チェックに指定してください。
 
 ## 依存関係の更新
 
@@ -38,7 +43,7 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 - セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
 - `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
 
-CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認を実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
+CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
 
 ### オートマージの初期設定
 
