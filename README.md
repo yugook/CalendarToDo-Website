@@ -23,7 +23,44 @@ npm run dev
 ```sh
 npm run check
 npm run build
+npm run check:dist
+npm run test:automation
 ```
+
+`check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーやブラウザー表示は、後述のプレビュー検証で確認します。
+
+## 依存関係の更新
+
+DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。通常の更新PRはエコシステムごとに最大5件とし、まとめずに個別に作成します。メジャー更新も検知対象に残します。
+
+- npmのパッチ更新だけをオートマージ対象にします。複数の依存を含むセキュリティ更新では、すべてがパッチ更新であることが条件です。
+- マイナー・メジャー更新、`0.x`のマイナー更新、プレリリース、GitHub Actions更新は手動レビューします。
+- セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
+- `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
+
+CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認を実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
+
+### オートマージの初期設定
+
+**初期状態は無効です。** このPRのマージだけではオートマージは有効になりません。次の順で導入します。
+
+1. PR上で`Validate`と`Cloudflare Pages`の成功を確認し、この設定を手動で`main`へマージします。
+2. GitHubのSettings → Rules → Rulesetsから既存の`main`ルールを編集します。署名・PR必須・会話解決・削除禁止・force push禁止の設定は維持し、次を追加します。
+   - Require status checks to pass: `Validate`（提供元GitHub Actions、App ID `15368`）と`Cloudflare Pages`（提供元Cloudflare Workers and Pages、App ID `85455`）。提供元を`Any source`にせず、各アプリに限定します。
+   - Require branches to be up to date before merging: 有効。
+3. Settingsのセキュリティ設定でDependency graph、Dependabot alerts、Dependabot security updatesを有効にします。セキュリティ更新は週次の通常更新とは別に処理されます。
+4. Settings → Secrets and variables → Actions → Variablesに、リポジトリ変数`DEPENDABOT_AUTO_MERGE_ENABLED`を値`true`で追加します。
+5. 最初のDependabotパッチPRで、署名・両チェック・merge commitでのマージを確認します。既存PRを評価し直す場合は、オートマージ用ワークフローを再実行するかPRを再オープンします。
+
+オートマージ用ワークフローは`pull_request_target`で動作し、PRのコードをcheckoutしたり依存をインストールしたりしません。Dependabot作成・同一リポジトリ・`main`向けのPRに限定し、Dependabotのコミット署名と更新情報、`package.json` / `package-lock.json`以外を変更していないことを確認します。さらにGitHub APIで有効なブランチルールを読み、上記の必須チェック・最新ブランチ必須・署名・PR必須を確認できない場合は自動マージしません。
+
+条件を満たすPRだけに、確認したhead SHAを指定して`gh pr merge --auto --merge`を実行します。チェック完了前ならGitHubのオートマージで待機し、完了済みならその時点でマージします。署名・会話解決などのルールを迂回せず、自動承認も行いません。PRの更新時は、このワークフローが以前設定したオートマージを解除してから判定し直します。検証失敗や対象外の更新は手動レビューに残します。
+
+### 停止・問題発生時
+
+リポジトリ変数`DEPENDABOT_AUTO_MERGE_ENABLED`を削除するか`false`にし、**すでに待機中のPRのオートマージもGitHub上で解除**します。変数の変更だけでは既存の待機要求は取り消されません。再実行時には、このワークフローが設定した待機要求も解除します。手動で設定したオートマージは変更しません。
+
+失敗した更新は手動で修正・再検証し、マージ後に問題が見つかった場合は該当するmerge commitのrevert PRを作成します。必須チェックや署名ルールは解除しません。Astroや画像処理の更新では、ビルド成功だけで表示の互換性を判断せず、必要に応じてCloudflareプレビューで日英表示・画像・言語切替を確認します。
 
 ## ディレクトリ
 
