@@ -49,5 +49,8 @@ jobs:
       - name: Check generated files
         run: npm run check:dist
 
+      - name: Test legal contract failure cases
+        run: npm run test:legal
+
       - name: Smoke test built website
         run: npm run test:smoke
