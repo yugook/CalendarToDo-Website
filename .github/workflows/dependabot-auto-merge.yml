@@ -29,6 +29,7 @@ jobs:
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
       - name: Apply patch-only auto-merge policy
+        id: policy
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,9 +55,18 @@ jobs:
               `, { id: pr.node_id });
             }
 
-            const skip = (reason) => core.info(`Manual review required: ${reason}`);
+            const record = (decision, reason, nextStep) => {
+              core.setOutput('decision', decision);
+              core.setOutput('reason', reason);
+              core.setOutput('next-step', nextStep);
+            };
+            const skip = (reason, nextStep = 'PRの差分と実行ログを確認し、必要な修正や手動レビューを行ってください。', decision = 'manual') => {
+              core.info(`Manual review required: ${reason}`);
+              record(decision, reason, nextStep);
+            };
             if (process.env.AUTO_MERGE_ENABLED !== 'true') {
-              return skip('auto-merge has not been enabled by a maintainer');
+              return skip('auto-merge has not been enabled by a maintainer',
+                '有効にする場合はREADMEの初期設定を確認してください。変数の変更だけでは、既存の待機要求は取り消されません。', 'disabled');
             }
             if (pr.state !== 'open' || pr.draft || pr.base.ref !== 'main' ||
                 pr.user.login !== 'dependabot[bot]' ||
@@ -67,10 +77,12 @@ jobs:
             // The pinned fetch-metadata action verifies and parses commits[0].
             // With exactly one PR commit, that commit is the complete head.
             if (pr.commits !== 1) {
-              return skip('PR must contain exactly one commit to bind metadata to its head');
+              return skip('PR must contain exactly one commit to bind metadata to its head',
+                'DependabotのPRではUpdate branchによるマージを避けてください。@dependabot rebaseを依頼し、拒否された場合は保持すべき手動変更を確認したうえで@dependabot recreateを検討してください。1コミットに戻った後も署名と必須チェックを再確認してください。');
             }
             if (process.env.METADATA_OUTCOME !== 'success') {
-              return skip('Dependabot metadata or commit verification failed');
+              return skip('Dependabot metadata or commit verification failed',
+                'メタデータ取得ステップのログとコミットのVerified表示を確認してください。署名検証を無効にせず、必要なら手動レビューしてください。', 'verification-failed');
             }
 
             let dependencies;
@@ -130,3 +142,46 @@ jobs:
               'pr', 'merge', String(pull_number), '--repo', `${owner}/${repo}`,
               '--auto', '--merge', '--match-head-commit', expectedHead,
             ]);
+            record('requested', 'The verified head passed the patch-only auto-merge policy',
+              'GitHubのPRで、必須チェック待機中かマージ済みかを確認してください。要求の成功だけではマージ完了を意味しません。');
+
+      - name: Summarize auto-merge decision
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          POLICY_OUTCOME: ${{ steps.policy.outcome }}
+          POLICY_DECISION: ${{ steps.policy.outputs.decision }}
+          POLICY_REASON: ${{ steps.policy.outputs.reason }}
+          POLICY_NEXT_STEP: ${{ steps.policy.outputs.next-step }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const titles = {
+              requested: '自動マージを要求しました',
+              manual: '手動対応が必要です',
+              disabled: '自動マージは無効です',
+              'verification-failed': '署名またはメタデータの検証に失敗しました',
+            };
+            const knownDecision = Object.hasOwn(titles, process.env.POLICY_DECISION);
+            const completed = process.env.POLICY_OUTCOME === 'success' && knownDecision;
+            const title = completed ? titles[process.env.POLICY_DECISION] : '判定処理でエラーが発生しました';
+            const reason = completed ? process.env.POLICY_REASON :
+              '判定処理が正常に完了していません。API取得や自動マージ要求などの失敗を実行ログで確認してください。';
+            const nextStep = completed ? process.env.POLICY_NEXT_STEP :
+              'PRの現在の状態と実行ログを確認し、原因を解消してから再実行してください。';
+            const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+              '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            })[character]);
+            await core.summary
+              .addHeading('Dependabot自動マージ判定')
+              .addTable([
+                ['PR', escapeHTML(`#${process.env.PR_NUMBER}`)],
+                ['判定対象のhead SHA', escapeHTML(process.env.EXPECTED_HEAD)],
+                ['結果', escapeHTML(title)],
+                ['理由', escapeHTML(reason)],
+              ])
+              .addHeading('次の対応', 3)
+              .addRaw(`<p>${escapeHTML(nextStep)}</p>`)
+              .addRaw('<p>Actionsの成功表示は、PRの自動マージ設定やマージ完了を保証しません。</p>')
+              .write();
