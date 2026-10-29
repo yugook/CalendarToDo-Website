@@ -57,6 +57,20 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 
 CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
 
+### Dependabot PRを最新化する運用
+
+DependabotのPRでは、GitHubの`Update branch`による`main`のマージや、PRブランチへの手動コミットを避けます。マージコミットもPR内のコミット数に含まれ、コミットが2件以上になると自動マージの対象外になります。PRを`main`へ取り込むときに作られるマージコミットは、この制限とは別です。
+
+Dependabotの自動rebaseは既定で有効です。定期チェックや競合の検出などを契機に最新化しますが、`main`のすべての更新に即座に追従する保証はありません。追加コミットが入ったPRや、作成から30日経過したPRでは、自動rebaseが停止します。詳しくは[GitHubのDependabot PR運用ガイド](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/manage-dependabot-prs)を確認してください。
+
+最新化を依頼する場合は、次の順で対応します。
+
+1. PRに`@dependabot rebase`とコメントします。
+2. 手動変更を理由に拒否された場合は、PRの差分を確認します。保持すべき変更がある場合は別途保存してレビューし、上書きしてよいことを確認してから`@dependabot recreate`を依頼します。`recreate`はPRブランチ上の手動変更を上書きするため、自動では実行しません。
+3. 新しいhead SHAについて、PR内のコミット数が1件、署名が`Verified`、`Validate`と`Cloudflare Pages`が成功していることを確認します。その後、`Dependabot auto-merge`のSummaryとPR上の自動マージ状態を確認します。手動rebaseで署名を付け直した場合も、署名とメタデータの検証を再確認します。
+
+`Dependabot auto-merge`のSummaryには、判定対象のhead SHA、結果、理由、次の対応を表示します。対象外のPRは自動マージせず正常終了するため、Actionsの成功表示だけで自動マージが設定されたとは判断しません。「自動マージを要求しました」という結果も、マージ完了とは区別してください。APIやコマンドが失敗した場合は、失敗した実行のSummaryとログを確認します。
+
 ### オートマージの初期設定
 
 **初期状態は無効です。** このPRのマージだけではオートマージは有効になりません。次の順で導入します。

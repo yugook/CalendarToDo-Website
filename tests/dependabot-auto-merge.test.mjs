@@ -8,10 +8,12 @@ const workflow = readFileSync(
   'utf8',
 );
 const blocks = workflow.split('          script: |\n');
-assert.equal(blocks.length, 2, 'Expected one inline policy script');
-const script = blocks[1].replace(/^ {12}/gm, '');
+assert.equal(blocks.length, 3, 'Expected inline policy and summary scripts');
+const script = blocks[1].split('\n      - name:')[0].replace(/^ {12}/gm, '');
+const summaryScript = blocks[2].replace(/^ {12}/gm, '');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const applyPolicy = new AsyncFunction('github', 'context', 'core', 'exec', 'process', script);
+const summarize = new AsyncFunction('core', 'process', summaryScript);
 
 const dependency = {
   dependencyName: '@astrojs/check',
@@ -61,6 +63,7 @@ function fixture() {
     commands: [],
     mutations: [],
     messages: [],
+    outputs: {},
   };
   const listFiles = () => {};
   state.github = {
@@ -75,7 +78,10 @@ function fixture() {
   state.run = () => applyPolicy(
     state.github,
     state.context,
-    { info: (message) => state.messages.push(message) },
+    {
+      info: (message) => state.messages.push(message),
+      setOutput: (name, value) => { state.outputs[name] = value; },
+    },
     { exec: async (...command) => state.commands.push(command) },
     { env: state.env },
   );
@@ -89,6 +95,97 @@ test('a verified npm patch requests auto-merge for the exact head without bypass
     'pr', 'merge', '14', '--repo', 'yugook/CalendarToDo-Website',
     '--auto', '--merge', '--match-head-commit', 'a'.repeat(40),
   ]]]);
+});
+
+async function summaryFor(state, outcome = 'success', overrides = {}) {
+  const rendered = { headings: [], tables: [], raw: [], writes: 0 };
+  const summary = {
+    addHeading: (value) => { rendered.headings.push(value); return summary; },
+    addTable: (value) => { rendered.tables.push(value); return summary; },
+    addRaw: (value) => { rendered.raw.push(value); return summary; },
+    write: async () => { rendered.writes += 1; },
+  };
+  await summarize({ summary }, { env: {
+    POLICY_OUTCOME: outcome,
+    POLICY_DECISION: state.outputs.decision,
+    POLICY_REASON: state.outputs.reason,
+    POLICY_NEXT_STEP: state.outputs['next-step'],
+    PR_NUMBER: String(state.pr.number),
+    EXPECTED_HEAD: state.context.payload.pull_request.head.sha,
+    ...overrides,
+  } });
+  assert.equal(rendered.writes, 1);
+  return JSON.stringify(rendered);
+}
+
+test('summary reports an auto-merge request without claiming it is merged', async () => {
+  const state = fixture();
+  await state.run();
+  assert.equal(state.outputs.decision, 'requested');
+  const summary = await summaryFor(state);
+  assert.match(summary, /自動マージを要求しました/);
+  assert.match(summary, /要求の成功だけではマージ完了を意味しません/);
+  assert.ok(summary.includes(state.pr.head.sha));
+});
+
+test('summary explains the extra-commit block and safe recovery steps', async () => {
+  const state = fixture();
+  state.pr.commits = 2;
+  await state.run();
+  assert.equal(state.commands.length, 0);
+  const summary = await summaryFor(state);
+  assert.match(summary, /手動対応が必要/);
+  assert.match(summary, /exactly one commit/);
+  assert.match(summary, /@dependabot rebase/);
+  assert.match(summary, /保持すべき手動変更/);
+  assert.match(summary, /@dependabot recreate/);
+});
+
+test('summary distinguishes disabled automation and failed verification', async () => {
+  const disabled = fixture();
+  disabled.env.AUTO_MERGE_ENABLED = 'false';
+  await disabled.run();
+  assert.match(await summaryFor(disabled), /自動マージは無効/);
+
+  const unverified = fixture();
+  unverified.env.METADATA_OUTCOME = 'failure';
+  await unverified.run();
+  assert.match(await summaryFor(unverified), /署名またはメタデータの検証に失敗/);
+  assert.equal(unverified.commands.length, 0);
+});
+
+test('summary shows API and merge-command failures even with stale success outputs', async () => {
+  const state = fixture();
+  state.outputs = { decision: 'requested', reason: 'stale reason', 'next-step': 'stale guidance' };
+  state.github.paginate = async () => { throw new Error('API unavailable'); };
+  await assert.rejects(state.run, /API unavailable/);
+  const summary = await summaryFor(state, 'failure');
+  assert.match(summary, /判定処理でエラー/);
+  assert.doesNotMatch(summary, /自動マージを要求しました|stale reason|stale guidance/);
+  assert.equal(state.commands.length, 0);
+
+  const failedMerge = fixture();
+  failedMerge.run = () => applyPolicy(failedMerge.github, failedMerge.context, {
+    info: () => {},
+    setOutput: (name, value) => { failedMerge.outputs[name] = value; },
+  }, { exec: async () => { throw new Error('merge request failed'); } }, { env: failedMerge.env });
+  await assert.rejects(failedMerge.run, /merge request failed/);
+  assert.match(await summaryFor(failedMerge, 'failure'), /判定処理でエラー/);
+  assert.notEqual(failedMerge.outputs.decision, 'requested');
+});
+
+test('summary fails closed for absent or unknown decisions and escapes HTML', async () => {
+  const state = fixture();
+  assert.match(await summaryFor(state), /判定処理でエラー/);
+  assert.match(await summaryFor(state, 'success', { POLICY_DECISION: 'toString' }), /判定処理でエラー/);
+  await state.run();
+  const summary = await summaryFor(state, 'success', {
+    POLICY_REASON: '<script>unsafe & text</script>',
+    POLICY_NEXT_STEP: '<img src=x onerror="unsafe">',
+  });
+  assert.match(summary, /&lt;script&gt;unsafe &amp; text&lt;\/script&gt;/);
+  assert.doesNotMatch(summary, /<script>|<img /);
+  assert.match(workflow, /- name: Summarize auto-merge decision\n        if: always\(\)/);
 });
 
 test('all dependencies in a multi-dependency security update must be patch upgrades', async () => {
