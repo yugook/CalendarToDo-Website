@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { assertLegalPage, assertPolicyJSON, LEGAL_PAGES } from './lib/legal-contract.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
@@ -21,13 +22,9 @@ for (const [path, locale] of pages) {
   assert.match(html, /<main\b/, `${path}: main content is missing`);
 }
 
-const policy = JSON.parse(await read('dist/legal/policy.json'));
-for (const section of ['terms', 'privacy', 'support']) {
-  assert.ok(policy[section]?.version, `${section}: policy version is missing`);
-  for (const locale of ['ja', 'en']) {
-    const url = new URL(policy[section][`url_${locale}`]);
-    assert.equal(url.origin, 'https://calendartodo.app');
-  }
+const policy = assertPolicyJSON(await readFile(new URL('dist/legal/policy.json', root)));
+for (const page of LEGAL_PAGES) {
+  assertLegalPage(await read(`dist${page.path}index.html`), page, policy);
 }
 
 const index = await read('dist/sitemap-index.xml');
@@ -41,4 +38,4 @@ for (const [path] of pages.filter(([path]) => path !== '404.html')) {
 }
 
 assert.equal(await read('dist/_headers'), await read('public/_headers'));
-console.log('Validated 9 HTML pages, policy JSON, sitemap, and Cloudflare headers.');
+console.log('Validated 9 HTML pages, legal content/dates, policy contract, sitemap, and Cloudflare headers.');

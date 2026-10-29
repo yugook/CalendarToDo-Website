@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { preview } from 'astro';
+import { assertLegalPage, assertPolicyJSON, LEGAL_PAGES } from './lib/legal-contract.mjs';
 
 const root = new URL('../', import.meta.url);
 const site = 'https://calendartodo.app';
@@ -97,14 +98,10 @@ describe('Built website', { timeout: 60_000 }, () => {
     });
   }
 
-  it('serves policy JSON with working localized URLs', async () => {
-    const policy = JSON.parse(
-      (await request('/legal/policy.json', /application\/json/)).toString(),
-    );
-    for (const section of ['terms', 'privacy', 'support']) {
-      assert.match(policy[section].version, /^\d{4}-\d{2}-\d{2}$/);
-      assert.equal(policy[section].url_ja, `${site}/${section}/`);
-      assert.equal(policy[section].url_en, `${site}/en/${section}/`);
+  it('serves the policy contract with matching legal content and dates', async () => {
+    const policy = assertPolicyJSON(await request('/legal/policy.json', /^application\/json(?:\s*;|\s*$)/));
+    for (const page of LEGAL_PAGES) {
+      assertLegalPage(pages.get(page.path), page, policy);
     }
   });
 

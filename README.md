@@ -25,12 +25,23 @@ npm run check
 npm run build
 npm run check:dist
 npm run test:automation
+npm run test:legal
 npm run test:smoke
 ```
 
 `check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーやブラウザー表示は、後述のプレビュー検証で確認します。
 
 `test:smoke`はビルド後に実行します。一時的なローカルサーバーを自動起動・停止し、日英8ページ、言語リンク、ポリシーJSON、404、画像・CSS・JavaScriptの配信と`_headers`のコピーを検証します。追加のサービスや認証情報は不要です。
+
+`check:dist`と`test:smoke`は、共通の契約検証で規約4ページの本文・更新日と`/legal/policy.json`の互換性も確認します。HTML解析用の`parse5`は開発依存で、公開サイトには組み込みません。
+
+- 各規約の本文領域に、現在の主要見出しすべてと各セクションの空でない本文、問い合わせ先の`mailto:`リンクが必要です。フッター、コメント、スクリプト、テンプレート、`hidden` / `aria-hidden="true"`の内容は本文の代わりになりません。
+- 利用規約の日英の`<time datetime>`と表示日付は`terms.version`、プライバシーポリシーの日英は`privacy.version`に一致させます。日付は実在する`YYYY-MM-DD`とし、2文書の版は別々に更新できます。
+- JSONの`terms` / `privacy` / `support`と既存の文字列フィールド、日英の公開URLを維持します。追加フィールドは許可します。規約2文書の最低版`2026-08-12`とJSON上限128 KiBは、iOSアプリの`LegalPolicyLinks.swift` / `LegalPolicyResponseValidator.swift`に対応します。アプリ側の契約変更時は、この検証も確認してください。
+
+`test:legal`はビルド後に実行し、生成物をメモリ上で変更した異常ケースを検証します。本文・見出し・連絡先の欠落、日付の不一致や不正日付、不正JSON・キー・型・URL、旧版、サイズ超過、不正UTF-8を拒否することを確認します。生成物や本番サイトは変更せず、外部への通信も行いません。
+
+規約本文を変更するときは、変更した文書の日英とJSONの版を合わせて更新します。誤字など版を変えない修正は、その理由をPRに記載してください。見出しや問い合わせ先を意図して変更する場合は、契約検証の期待値もレビュー対象にします。これらの検証は本文の欠落と形式の不整合を検出するもので、文章の法的妥当性・翻訳品質・CSSによる表示・実機での同意フローは別途確認が必要です。本番監視はこの検証には含みません。
 
 GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブランチ保護でCIを必須にする場合は、`Validate`を必須チェックに指定してください。
 
@@ -44,7 +55,7 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 - セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
 - `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
 
-CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
+CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
 
 ### Dependabot PRを最新化する運用
 

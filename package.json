@@ -13,6 +13,7 @@
     "check": "astro check",
     "check:dist": "node scripts/check-dist.mjs",
     "test:automation": "node --test tests/dependabot-auto-merge.test.mjs",
+    "test:legal": "node --test tests/legal-contract.test.mjs",
     "test:smoke": "node --test scripts/smoke-test.mjs",
     "generate:og": "node scripts/generate-og-images.mjs",
     "preview": "astro preview",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "parse5": "^8.0.1",
     "sharp": "^0.35.5",
     "typescript": "^6.0.3"
   }
