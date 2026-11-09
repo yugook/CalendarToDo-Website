@@ -27,9 +27,10 @@ npm run check:dist
 npm run test:automation
 npm run test:legal
 npm run test:smoke
+npm run test:e2e
 ```
 
-`check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーやブラウザー表示は、後述のプレビュー検証で確認します。
+`check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーと公開環境での表示は、後述のプレビュー検証で確認します。
 
 `test:smoke`はビルド後に実行します。一時的なローカルサーバーを自動起動・停止し、日英8ページ、言語リンク、ポリシーJSON、404、画像・CSS・JavaScriptの配信と`_headers`のコピーを検証します。追加のサービスや認証情報は不要です。
 
@@ -43,7 +44,44 @@ npm run test:smoke
 
 規約本文を変更するときは、変更した文書の日英とJSONの版を合わせて更新します。誤字など版を変えない修正は、その理由をPRに記載してください。見出しや問い合わせ先を意図して変更する場合は、契約検証の期待値もレビュー対象にします。これらの検証は本文の欠落と形式の不整合を検出するもので、文章の法的妥当性・翻訳品質・CSSによる表示・実機での同意フローは別途確認が必要です。本番監視はこの検証には含みません。
 
-GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブランチ保護でCIを必須にする場合は、`Validate`を必須チェックに指定してください。
+GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブラウザーテストも既存の`Validate`内で実行するため、ブランチ保護の必須チェック名は変わりません。
+
+### ブラウザーテスト（Playwright）
+
+初回とPlaywright更新後は、対応するブラウザーをインストールします。Linuxでは`--with-deps`でOS依存も準備します。
+
+```sh
+npx playwright install --with-deps chromium webkit
+npm run build
+npm run test:e2e
+```
+
+`test:e2e`は`playwright.config.ts`の設定に従って`astro preview`を`http://127.0.0.1:4322`で起動し、終了時に停止します。`--ignore-lock`でAstroの自動バックグラウンド起動を抑え、Playwrightがプロセスを管理します。このテスト用サーバーは`astro preview stop/status`の管理対象外です。既存のサーバーは再利用しないため、ポート4322は空けてください。テスト対象は直前にビルドした`dist`です。サイトを変更した場合は、再ビルドしてから実行してください。
+
+Chromium・WebKitのPC表示と、Pixel 7・iPhone 13相当のモバイル表示で、`tests/e2e`の同じテストを実行します。
+
+- 日英8ページの表示、言語切替先、横方向のはみ出し
+- トップ・サポートページの言語切替往復とセクション内のスクロール位置復元
+- `sessionStorage`を利用できない場合のセクション移動
+- キーボードでの本文への移動、フッターからの主要ページへの移動
+- スクロールに応じた製品画像の読み込み
+- 幅320pxでのFAQの開閉とEnter・Spaceキー操作
+- 各テスト中の未処理JavaScriptエラー
+
+テストはライトモードと動きを抑える設定で実行します。画像差分比較、ダークモード、実機Safari、Cloudflareのレスポンスヘッダー・CSP適用はこのスイートの検証範囲に含みません。公開環境の確認は後述のCloudflareプレビュー検証で行ってください。
+
+ChromiumではCSSのページ遷移が中止されると、スタックを持たない`InvalidStateError: Transition was aborted because of invalid state. ViewTransition opt-in disabled`が発生する場合があります。この完全一致のネイティブ例外だけを`native-view-transition`注記としてレポートに残し、テスト失敗から除外します。それ以外の`pageerror`は失敗にします。遷移アニメーション自体の品質は、このテストでは判定しません。
+
+```sh
+# ブラウザーを絞って実行
+npm run test:e2e -- --project=chromium
+# UIで実行・確認
+npm run test:e2e:ui
+# 直前のHTMLレポートを開く
+npx playwright show-report
+```
+
+CIはブラウザーとOS依存をインストールし、4構成を`Validate`内で実行します。CIの再試行は1回で、再試行だけ成功した不安定なテストも失敗として扱います。失敗時のスクリーンショットと再試行時のTrace、HTMLレポートを`playwright-report`アーティファクトとして7日間保存します。ローカルの`playwright-report/`と`test-results/`はGit管理対象外です。再試行のないローカル実行でTraceが必要な場合は、`npm run test:e2e -- --trace retain-on-failure`を使ってください。
 
 ## 依存関係の更新
 
@@ -55,7 +93,7 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 - セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
 - `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
 
-CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
+CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テスト、Playwrightのブラウザーテストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
 
 ### Dependabot PRを最新化する運用
 

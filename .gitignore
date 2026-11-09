@@ -3,6 +3,8 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+playwright-report/
+test-results/
 
 # Local environment variables and secrets
 .env

@@ -89,12 +89,17 @@ const restorePosition = () => {
     window.scrollTo({ top: targetPosition, behavior: 'auto' });
   };
 
+  // WebKit may apply the URL fragment after the first animation frame at load.
+  // Restore on the following frame so that the fragment jump cannot overwrite it.
+  const restoreAfterFragment = () =>
+    window.requestAnimationFrame(() => window.requestAnimationFrame(restore));
+
   if (document.readyState === 'complete') {
-    window.requestAnimationFrame(restore);
+    restoreAfterFragment();
   } else {
     window.addEventListener(
       'load',
-      () => window.requestAnimationFrame(restore),
+      restoreAfterFragment,
       { once: true },
     );
   }
