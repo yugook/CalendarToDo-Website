@@ -85,7 +85,7 @@ npm run test:e2e:ui
 npx playwright show-report
 ```
 
-CIは`npx playwright install --with-deps --only-shell chromium webkit`でヘッドレス実行に必要なブラウザーとOS依存を準備し、4構成を`Validate`内で実行します。ブラウザーのキャッシュは、復元時間と再ダウンロード時間が同程度でLinuxのOS依存はキャッシュできないという[公式の説明](https://playwright.dev/docs/ci#caching-browsers)に従い追加していません。
+CIのOSはUbuntu 24.04に固定し、`ubuntu-latest`の切替でブラウザーのネイティブ依存が変わらないようにします。`npx playwright install-deps chromium webkit`と`npx playwright install --only-shell chromium webkit`を別ステップで実行し、OSパッケージとブラウザー本体の取得状況を分けて確認できます。4構成は`Validate`内で実行します。ブラウザーのキャッシュは、復元時間と再ダウンロード時間が同程度でLinuxのOS依存はキャッシュできないという[公式の説明](https://playwright.dev/docs/ci#caching-browsers)に従い追加していません。
 
 `CI=true`または`CI=1`のときは、安定性を優先して1ワーカー・再試行1回とし、再試行だけ成功した不安定なテストも失敗として扱います。`CI=false`・`CI=0`・未設定では通常のローカル設定になり、ワーカー数はPlaywrightの既定値を使用します。必要に応じて`npm run test:e2e -- --workers=2`で調整できます。
 

@@ -17,7 +17,8 @@ concurrency:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    # Keep native browser dependencies stable across ubuntu-latest rollovers.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       ASTRO_TELEMETRY_DISABLED: '1'
@@ -55,8 +56,11 @@ jobs:
       - name: Smoke test built website
         run: npm run test:smoke
 
+      - name: Install Playwright system dependencies
+        run: npx playwright install-deps chromium webkit
+
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps --only-shell chromium webkit
+        run: npx playwright install --only-shell chromium webkit
 
       - name: Test browser interactions
         run: npm run test:e2e
