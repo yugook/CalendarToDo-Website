@@ -44,7 +44,6 @@ const savePosition = (link: HTMLAnchorElement) => {
     scrollableHeight > 0 ? clamp(offset / scrollableHeight, 0, 1) : 0;
 
   targetURL.hash = section.id;
-  link.href = targetURL.toString();
 
   const position = {
     path: targetURL.pathname,
@@ -54,9 +53,13 @@ const savePosition = (link: HTMLAnchorElement) => {
 
   try {
     window.sessionStorage.setItem(storageKey, JSON.stringify(position));
+    // Do not queue a native fragment jump that could overwrite the saved progress.
+    // The destination adds the fragment with replaceState after restoring once.
+    targetURL.hash = '';
   } catch {
     // The hash still preserves the section when browser storage is unavailable.
   }
+  link.href = targetURL.toString();
 };
 
 const restorePosition = () => {
@@ -84,13 +87,14 @@ const restorePosition = () => {
   }
 
   const controller = new AbortController();
-  let frame: number | undefined;
-  const stopRestoring = () => {
-    controller.abort();
-    if (frame !== undefined) window.cancelAnimationFrame(frame);
-  };
+  const stopRestoring = () => controller.abort();
 
   const restore = () => {
+    if (controller.signal.aborted) return;
+    stopRestoring();
+    // Native scrollbar input may scroll without a DOM pointer or wheel event.
+    if (Math.abs(window.scrollY) > 1) return;
+
     const headerHeight = getHeaderHeight();
     const scrollableHeight = Math.max(
       section.offsetHeight - (window.innerHeight - headerHeight),
@@ -104,32 +108,27 @@ const restorePosition = () => {
     if (Math.abs(window.scrollY - targetPosition) > 1) {
       window.scrollTo({ top: targetPosition, behavior: 'auto' });
     }
+    const targetURL = new URL(window.location.href);
+    targetURL.hash = section.id;
+    window.history.replaceState(window.history.state, '', targetURL);
   };
 
-  const scheduleRestore = () => {
-    if (controller.signal.aborted || document.readyState !== 'complete' || frame !== undefined) return;
-    frame = window.requestAnimationFrame(() => {
-      frame = undefined;
-      restore();
-    });
-  };
-
-  // Native fragment scrolling can happen after load, regardless of frame count.
-  // Correct it until the user takes control; never pull back after user input.
+  // Respect user input while loading, including scrolling via native UI.
+  // All listeners are removed before the one-shot restoration.
   for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
     window.addEventListener(type, stopRestoring, {
       capture: true, passive: true, signal: controller.signal,
     });
   }
-  for (const type of ['scroll', 'scrollend']) {
-    window.addEventListener(type, scheduleRestore, { passive: true, signal: controller.signal });
-  }
+  window.addEventListener('scroll', () => {
+    if (Math.abs(window.scrollY) > 1) stopRestoring();
+  }, { passive: true, signal: controller.signal });
   window.addEventListener('pagehide', stopRestoring, { once: true, signal: controller.signal });
 
   if (document.readyState === 'complete') {
-    scheduleRestore();
+    restore();
   } else {
-    window.addEventListener('load', scheduleRestore, { once: true, signal: controller.signal });
+    window.addEventListener('load', restore, { once: true, signal: controller.signal });
   }
 };
 

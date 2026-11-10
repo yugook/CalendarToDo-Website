@@ -93,24 +93,29 @@ test('language switching keeps the section when sessionStorage is unavailable', 
   await expectSectionStart(page, 'features');
 });
 
-test('restores progress after a fragment jump delayed beyond two frames', async ({ page, isMobile }) => {
+test('adds the URL fragment only after restoring without a native fragment jump', async ({ page, isMobile }) => {
   await page.addInitScript(() => {
-    if (location.pathname !== '/en/') return;
-    window.addEventListener('load', () => {
-      let frames = 0;
-      const jump = () => {
-        if (++frames < 6) { requestAnimationFrame(jump); return; }
-        document.getElementById('features')!.scrollIntoView();
-        document.documentElement.dataset.delayedFragment = 'done';
-      };
-      requestAnimationFrame(jump);
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.dataset.initialFragment = location.hash || 'none';
     }, { once: true });
   });
   await page.goto(LOCALE_PATHS.ja);
   await scrollIntoSection(page, 'features');
   await switchLanguage(page, 'English', LOCALE_PATHS.en, 'features', isMobile);
-  await expect(page.locator('html')).toHaveAttribute('data-delayed-fragment', 'done');
+  await expect(page.locator('html')).toHaveAttribute('data-initial-fragment', 'none');
   await expectReadingProgress(page, 'features');
+});
+
+test('respects scrolling without DOM input events after restoration', async ({ page, isMobile }) => {
+  await page.goto(LOCALE_PATHS.ja);
+  await scrollIntoSection(page, 'features');
+  await switchLanguage(page, 'English', LOCALE_PATHS.en, 'features', isMobile);
+  await expectReadingProgress(page, 'features');
+  const previousY = await page.evaluate(() => window.scrollY);
+  // Native scrollbar drags need not emit pointerdown/wheel/keydown in the page.
+  await page.evaluate(() => window.scrollBy(0, 200));
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(previousY + 200, 0);
 });
 
 test('does not pull the reader back after keyboard scrolling', async ({ page, isMobile }) => {
@@ -125,32 +130,35 @@ test('does not pull the reader back after keyboard scrolling', async ({ page, is
   expect((await readingPosition(page, 'features')).progress).toBeGreaterThan(0.45);
 });
 
-test('respects user input before the page finishes loading', async ({ page }) => {
-  let release!: () => void;
-  const pendingImage = new Promise<void>((resolve) => { release = resolve; });
-  await page.route('**/__e2e_slow_image__.svg', async (route) => {
-    await pendingImage;
-    await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' });
+for (const input of ['keyboard', 'native scroll'] as const) {
+  test(`respects ${input} input before the page finishes loading`, async ({ page }) => {
+    let release!: () => void;
+    const pendingImage = new Promise<void>((resolve) => { release = resolve; });
+    await page.route('**/__e2e_slow_image__.svg', async (route) => {
+      await pendingImage;
+      await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' });
+    });
+    await page.addInitScript(() => {
+      sessionStorage.setItem('calendar-todo:language-position', JSON.stringify({
+        path: '/en/', sectionId: 'features', progress: 0.4,
+      }));
+      document.addEventListener('DOMContentLoaded', () => {
+        const image = new Image(1, 1);
+        image.src = '/__e2e_slow_image__.svg';
+        document.body.append(image);
+      }, { once: true });
+    });
+    try {
+      await page.goto(LOCALE_PATHS.en, { waitUntil: 'domcontentloaded' });
+      expect(await page.evaluate(() => document.readyState)).not.toBe('complete');
+      if (input === 'keyboard') await page.keyboard.press('Home');
+      else await page.evaluate(() => window.scrollTo(0, 250));
+      release();
+      await page.waitForLoadState('load');
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(input === 'keyboard' ? 0 : 250, 0);
+    } finally {
+      release();
+    }
   });
-  await page.addInitScript(() => {
-    sessionStorage.setItem('calendar-todo:language-position', JSON.stringify({
-      path: '/en/', sectionId: 'features', progress: 0.4,
-    }));
-    document.addEventListener('DOMContentLoaded', () => {
-      const image = new Image(1, 1);
-      image.src = '/__e2e_slow_image__.svg';
-      document.body.append(image);
-    }, { once: true });
-  });
-  try {
-    await page.goto(LOCALE_PATHS.en, { waitUntil: 'domcontentloaded' });
-    expect(await page.evaluate(() => document.readyState)).not.toBe('complete');
-    await page.keyboard.press('Home');
-    release();
-    await page.waitForLoadState('load');
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    expect(await page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(1);
-  } finally {
-    release();
-  }
-});
+}
