@@ -1,14 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:4322';
+const port = Number(process.env.PLAYWRIGHT_PORT ?? '4322');
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('PLAYWRIGHT_PORT must be an integer between 1 and 65535');
+}
+const baseURL = `http://127.0.0.1:${port}`;
+const isCI = /^(1|true)$/i.test(process.env.CI ?? '');
 
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  failOnFlakyTests: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : 4,
+  forbidOnly: isCI,
+  failOnFlakyTests: isCI,
+  retries: isCI ? 1 : 0,
+  workers: isCI ? 1 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL,
@@ -26,7 +31,7 @@ export default defineConfig({
   ],
   webServer: {
     // Keep the test server in the foreground, including inside coding agents.
-    command: 'npm run preview -- --host 127.0.0.1 --port 4322 --ignore-lock',
+    command: `npm run preview -- --host 127.0.0.1 --port ${port} --ignore-lock`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 30_000,

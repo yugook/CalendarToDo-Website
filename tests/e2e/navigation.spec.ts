@@ -1,38 +1,26 @@
 import { test, expect } from './fixtures';
-
-const pages = [
-  { paths: ['/', '/en/'], headings: ['予定を入れるだけで、終わらせない。', "Don't let your plans end on the calendar."] },
-  { paths: ['/support/', '/en/support/'], headings: ['Calendar ToDo サポート', 'Calendar ToDo Support'] },
-  { paths: ['/terms/', '/en/terms/'], headings: ['利用規約', 'Terms of Service'] },
-  { paths: ['/privacy/', '/en/privacy/'], headings: ['プライバシーポリシー', 'Privacy Policy'] },
-] as const;
+import { LEGAL_PATHS, LOCALE_PATHS, SUPPORT_PATHS } from '../../src/config/site';
+import { expectNoHorizontalOverflow, navigateAndWait } from './helpers';
+import { pages } from './site-cases';
 
 for (const entry of pages) {
-  for (const [index, locale] of ['ja', 'en'].entries()) {
-    const alternate = 1 - index;
+  for (const locale of ['ja', 'en'] as const) {
+    const alternate = locale === 'ja' ? 'en' : 'ja';
 
-    test(`${entry.paths[index]} renders and switches to its translated page`, async ({ page }) => {
-      const response = await page.goto(entry.paths[index]);
+    test(`${entry.paths[locale]} renders and switches to its translated page`, async ({ page }) => {
+      const response = await page.goto(entry.paths[locale]);
       expect(response?.status()).toBe(200);
       await expect(page.locator('html')).toHaveAttribute('lang', locale);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(entry.headings[index]);
-
-      const width = await page.evaluate(() => ({
-        content: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-        viewport: window.innerWidth,
-      }));
-      expect(width.content, 'Page should not overflow horizontally').toBeLessThanOrEqual(width.viewport + 1);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(entry.headings[locale]);
+      await expectNoHorizontalOverflow(page);
 
       const switcher = page.getByRole('navigation', {
-        name: index === 0 ? '表示言語' : 'Display language', exact: true,
+        name: locale === 'ja' ? '表示言語' : 'Display language', exact: true,
       });
-      const link = switcher.getByRole('link', { name: index === 0 ? 'English' : '日本語', exact: true });
+      const link = switcher.getByRole('link', { name: locale === 'ja' ? 'English' : '日本語', exact: true });
       await expect(link).toBeInViewport();
-      await link.click();
-
-      await expect(page).toHaveURL((url) => url.pathname === entry.paths[alternate]);
-      await page.waitForLoadState('load');
-      await expect(page.locator('html')).toHaveAttribute('lang', index === 0 ? 'en' : 'ja');
+      await navigateAndWait(page, { pathname: entry.paths[alternate] }, () => link.click());
+      await expect(page.locator('html')).toHaveAttribute('lang', alternate);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(entry.headings[alternate]);
     });
   }
@@ -40,8 +28,7 @@ for (const entry of pages) {
 
 for (const locale of ['ja', 'en'] as const) {
   const isJapanese = locale === 'ja';
-  const home = isJapanese ? '/' : '/en/';
-  const prefix = isJapanese ? '' : '/en';
+  const home = LOCALE_PATHS[locale];
 
   test(`${locale}: keyboard skip link and footer links reach the main pages`, async ({ page, browserName }) => {
     await page.goto(home);
@@ -50,19 +37,17 @@ for (const locale of ['ja', 'en'] as const) {
     const skipLink = page.getByRole('link', { name: isJapanese ? '本文へ移動' : 'Skip to content', exact: true });
     await expect(skipLink).toBeFocused();
     await expect(skipLink).toBeInViewport();
-    await page.keyboard.press('Enter');
-    await expect(page).toHaveURL((url) => url.hash === '#main-content');
+    await navigateAndWait(page, { pathname: home, hash: '#main-content' }, () => page.keyboard.press('Enter'));
 
     for (const [path, label] of [
-      ['/support/', isJapanese ? 'サポート' : 'Support'],
-      ['/terms/', isJapanese ? '利用規約' : 'Terms of Service'],
-      ['/privacy/', isJapanese ? 'プライバシーポリシー' : 'Privacy Policy'],
+      [SUPPORT_PATHS[locale], isJapanese ? 'サポート' : 'Support'],
+      [LEGAL_PATHS.terms[locale], isJapanese ? '利用規約' : 'Terms of Service'],
+      [LEGAL_PATHS.privacy[locale], isJapanese ? 'プライバシーポリシー' : 'Privacy Policy'],
     ]) {
-      await page.getByRole('navigation', {
+      const link = page.getByRole('navigation', {
         name: isJapanese ? 'フッターナビゲーション' : 'Footer navigation', exact: true,
-      }).getByRole('link', { name: label, exact: true }).click();
-      await expect(page).toHaveURL((url) => url.pathname === `${prefix}${path}`);
-      await page.waitForLoadState('load');
+      }).getByRole('link', { name: label, exact: true });
+      await navigateAndWait(page, { pathname: path }, () => link.click());
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }
   });
@@ -83,7 +68,7 @@ for (const locale of ['ja', 'en'] as const) {
 
   test(`${locale}: narrow support page FAQ works with pointer and keyboard`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 700 });
-    await page.goto(`${prefix}/support/`);
+    await page.goto(SUPPORT_PATHS[locale]);
     const faq = page.locator('#faq details').first();
     const summary = faq.locator('summary');
     const answer = faq.locator('p').first();
@@ -97,7 +82,6 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(answer).toBeHidden();
     await page.keyboard.press('Space');
     await expect(answer).toBeVisible();
-    const width = await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth));
-    expect(width, 'Expanded FAQ should fit a 320px viewport').toBeLessThanOrEqual(321);
+    await expectNoHorizontalOverflow(page);
   });
 }

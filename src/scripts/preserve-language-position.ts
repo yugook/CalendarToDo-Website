@@ -12,10 +12,14 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 const getSections = () =>
   Array.from(document.querySelectorAll<HTMLElement>('main section[id]'));
 
+const getHeaderHeight = () =>
+  document.querySelector<HTMLElement>('.site-header')?.getBoundingClientRect().height ?? 0;
+
 const getCurrentSection = () => {
   const sections = getSections();
+  const headerHeight = getHeaderHeight();
   const referencePosition =
-    window.scrollY + Math.min(window.innerHeight * 0.3, 160);
+    window.scrollY + headerHeight + Math.min((window.innerHeight - headerHeight) * 0.3, 160);
 
   return sections.reduce<HTMLElement | undefined>((current, section) => {
     return section.offsetTop <= referencePosition ? section : current;
@@ -30,11 +34,12 @@ const savePosition = (link: HTMLAnchorElement) => {
   }
 
   const targetURL = new URL(link.href, window.location.href);
+  const headerHeight = getHeaderHeight();
   const scrollableHeight = Math.max(
-    section.offsetHeight - window.innerHeight,
+    section.offsetHeight - (window.innerHeight - headerHeight),
     0,
   );
-  const offset = Math.max(window.scrollY - section.offsetTop, 0);
+  const offset = Math.max(window.scrollY + headerHeight - section.offsetTop, 0);
   const progress =
     scrollableHeight > 0 ? clamp(offset / scrollableHeight, 0, 1) : 0;
 
@@ -68,7 +73,7 @@ const restorePosition = () => {
     return;
   }
 
-  if (!position || position.path !== window.location.pathname) {
+  if (!position || position.path !== window.location.pathname || !Number.isFinite(position.progress)) {
     return;
   }
 
@@ -78,30 +83,53 @@ const restorePosition = () => {
     return;
   }
 
-  const restore = () => {
-    const scrollableHeight = Math.max(
-      section.offsetHeight - window.innerHeight,
-      0,
-    );
-    const targetPosition =
-      section.offsetTop + scrollableHeight * clamp(position.progress, 0, 1);
-
-    window.scrollTo({ top: targetPosition, behavior: 'auto' });
+  const controller = new AbortController();
+  let frame: number | undefined;
+  const stopRestoring = () => {
+    controller.abort();
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
   };
 
-  // WebKit may apply the URL fragment after the first animation frame at load.
-  // Restore on the following frame so that the fragment jump cannot overwrite it.
-  const restoreAfterFragment = () =>
-    window.requestAnimationFrame(() => window.requestAnimationFrame(restore));
+  const restore = () => {
+    const headerHeight = getHeaderHeight();
+    const scrollableHeight = Math.max(
+      section.offsetHeight - (window.innerHeight - headerHeight),
+      0,
+    );
+    const targetPosition = Math.max(
+      section.offsetTop - headerHeight + scrollableHeight * clamp(position.progress, 0, 1),
+      0,
+    );
+
+    if (Math.abs(window.scrollY - targetPosition) > 1) {
+      window.scrollTo({ top: targetPosition, behavior: 'auto' });
+    }
+  };
+
+  const scheduleRestore = () => {
+    if (controller.signal.aborted || document.readyState !== 'complete' || frame !== undefined) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      restore();
+    });
+  };
+
+  // Native fragment scrolling can happen after load, regardless of frame count.
+  // Correct it until the user takes control; never pull back after user input.
+  for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+    window.addEventListener(type, stopRestoring, {
+      capture: true, passive: true, signal: controller.signal,
+    });
+  }
+  for (const type of ['scroll', 'scrollend']) {
+    window.addEventListener(type, scheduleRestore, { passive: true, signal: controller.signal });
+  }
+  window.addEventListener('pagehide', stopRestoring, { once: true, signal: controller.signal });
 
   if (document.readyState === 'complete') {
-    restoreAfterFragment();
+    scheduleRestore();
   } else {
-    window.addEventListener(
-      'load',
-      restoreAfterFragment,
-      { once: true },
-    );
+    window.addEventListener('load', scheduleRestore, { once: true, signal: controller.signal });
   }
 };
 

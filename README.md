@@ -56,12 +56,14 @@ npm run build
 npm run test:e2e
 ```
 
-`test:e2e`は`playwright.config.ts`の設定に従って`astro preview`を`http://127.0.0.1:4322`で起動し、終了時に停止します。`--ignore-lock`でAstroの自動バックグラウンド起動を抑え、Playwrightがプロセスを管理します。このテスト用サーバーは`astro preview stop/status`の管理対象外です。既存のサーバーは再利用しないため、ポート4322は空けてください。テスト対象は直前にビルドした`dist`です。サイトを変更した場合は、再ビルドしてから実行してください。
+`test:e2e`は`playwright.config.ts`の設定に従って`astro preview`を`http://127.0.0.1:4322`で起動し、終了時に停止します。別のポートを使う場合は`PLAYWRIGHT_PORT=4339 npm run test:e2e`のように指定します（1〜65535の整数）。`--ignore-lock`でAstroの自動バックグラウンド起動を抑え、Playwrightがプロセスを管理します。このテスト用サーバーは`astro preview stop/status`の管理対象外です。既存のサーバーは再利用しないため、指定したポートは空けてください。テスト対象は直前にビルドした`dist`です。サイトを変更した場合は、再ビルドしてから実行してください。
 
 Chromium・WebKitのPC表示と、Pixel 7・iPhone 13相当のモバイル表示で、`tests/e2e`の同じテストを実行します。
 
 - 日英8ページの表示、言語切替先、横方向のはみ出し
 - トップ・サポートページの言語切替往復とセクション内のスクロール位置復元
+- セクション先頭が固定ヘッダーに隠れないこと、遅れて発生するアンカー移動後の復元
+- 読み込み中・復元後のユーザー操作で自動補正が停止すること
 - `sessionStorage`を利用できない場合のセクション移動
 - キーボードでの本文への移動、フッターからの主要ページへの移動
 - スクロールに応じた製品画像の読み込み
@@ -70,7 +72,9 @@ Chromium・WebKitのPC表示と、Pixel 7・iPhone 13相当のモバイル表示
 
 テストはライトモードと動きを抑える設定で実行します。画像差分比較、ダークモード、実機Safari、Cloudflareのレスポンスヘッダー・CSP適用はこのスイートの検証範囲に含みません。公開環境の確認は後述のCloudflareプレビュー検証で行ってください。
 
-ChromiumではCSSのページ遷移が中止されると、スタックを持たない`InvalidStateError: Transition was aborted because of invalid state. ViewTransition opt-in disabled`が発生する場合があります。この完全一致のネイティブ例外だけを`native-view-transition`注記としてレポートに残し、テスト失敗から除外します。それ以外の`pageerror`は失敗にします。遷移アニメーション自体の品質は、このテストでは判定しません。
+サポートページの復元テストは画面の高さを400pxにし、日英どちらもセクションが画面内に収まらないことを確認します。単なるアンカー移動だけでは通らない構成です。横幅は`innerWidth`ではなく`document.documentElement.clientWidth`と設定した画面幅を基準に検証します。
+
+ページ遷移の開始設定を`public/styles/view-transitions.css`で先に読み込み、外部の通常スクリプト`public/scripts/view-transitions.js`が最初の描画前に`pageswap` / `pagereveal`を登録します。省略されたアニメーションの`ready`の拒否は、そのPromiseで処理します。テスト側では例外を除外せず、すべての`pageerror`を失敗として扱います。遷移アニメーション自体の見た目は、このテストでは判定しません。
 
 ```sh
 # ブラウザーを絞って実行
@@ -81,7 +85,11 @@ npm run test:e2e:ui
 npx playwright show-report
 ```
 
-CIはブラウザーとOS依存をインストールし、4構成を`Validate`内で実行します。CIの再試行は1回で、再試行だけ成功した不安定なテストも失敗として扱います。失敗時のスクリーンショットと再試行時のTrace、HTMLレポートを`playwright-report`アーティファクトとして7日間保存します。ローカルの`playwright-report/`と`test-results/`はGit管理対象外です。再試行のないローカル実行でTraceが必要な場合は、`npm run test:e2e -- --trace retain-on-failure`を使ってください。
+CIは`npx playwright install --with-deps --only-shell chromium webkit`でヘッドレス実行に必要なブラウザーとOS依存を準備し、4構成を`Validate`内で実行します。ブラウザーのキャッシュは、復元時間と再ダウンロード時間が同程度でLinuxのOS依存はキャッシュできないという[公式の説明](https://playwright.dev/docs/ci#caching-browsers)に従い追加していません。
+
+`CI=true`または`CI=1`のときは、安定性を優先して1ワーカー・再試行1回とし、再試行だけ成功した不安定なテストも失敗として扱います。`CI=false`・`CI=0`・未設定では通常のローカル設定になり、ワーカー数はPlaywrightの既定値を使用します。必要に応じて`npm run test:e2e -- --workers=2`で調整できます。
+
+失敗時のスクリーンショットと再試行時のTrace、HTMLレポートを`playwright-report`アーティファクトとして7日間保存します。ローカルの`playwright-report/`と`test-results/`はGit管理対象外・型チェックの対象外です。再試行のないローカル実行でTraceが必要な場合は、`npm run test:e2e -- --trace retain-on-failure`を使ってください。
 
 ## 依存関係の更新
 
