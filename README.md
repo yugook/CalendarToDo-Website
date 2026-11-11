@@ -27,9 +27,10 @@ npm run check:dist
 npm run test:automation
 npm run test:legal
 npm run test:smoke
+npm run test:e2e
 ```
 
-`check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーやブラウザー表示は、後述のプレビュー検証で確認します。
+`check:dist`はビルド後に実行し、日英のページと404、ポリシーJSON、サイトマップ、Cloudflare用ヘッダーの生成を確認します。Cloudflare上のレスポンスヘッダーと公開環境での表示は、後述のプレビュー検証で確認します。
 
 `test:smoke`はビルド後に実行します。一時的なローカルサーバーを自動起動・停止し、日英8ページ、言語リンク、ポリシーJSON、404、画像・CSS・JavaScriptの配信と`_headers`のコピーを検証します。追加のサービスや認証情報は不要です。
 
@@ -43,7 +44,54 @@ npm run test:smoke
 
 規約本文を変更するときは、変更した文書の日英とJSONの版を合わせて更新します。誤字など版を変えない修正は、その理由をPRに記載してください。見出しや問い合わせ先を意図して変更する場合は、契約検証の期待値もレビュー対象にします。これらの検証は本文の欠落と形式の不整合を検出するもので、文章の法的妥当性・翻訳品質・CSSによる表示・実機での同意フローは別途確認が必要です。本番監視はこの検証には含みません。
 
-GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブランチ保護でCIを必須にする場合は、`Validate`を必須チェックに指定してください。
+GitHub ActionsのCIはすべてのPR、`main`へのpush、手動実行で同じ検証を行います。Node.jsは`.nvmrc`を使用し、依存関係は`npm ci`でインストールします。ブラウザーテストも既存の`Validate`内で実行するため、ブランチ保護の必須チェック名は変わりません。
+
+### ブラウザーテスト（Playwright）
+
+初回とPlaywright更新後は、対応するブラウザーをインストールします。Linuxでは`--with-deps`でOS依存も準備します。
+
+```sh
+npx playwright install --with-deps chromium webkit
+npm run build
+npm run test:e2e
+```
+
+`test:e2e`は`playwright.config.ts`の設定に従って`astro preview`を`http://127.0.0.1:4322`で起動し、終了時に停止します。別のポートを使う場合は`PLAYWRIGHT_PORT=4339 npm run test:e2e`のように指定します（1〜65535の整数）。`--ignore-lock`でAstroの自動バックグラウンド起動を抑え、Playwrightがプロセスを管理します。このテスト用サーバーは`astro preview stop/status`の管理対象外です。既存のサーバーは再利用しないため、指定したポートは空けてください。テスト対象は直前にビルドした`dist`です。サイトを変更した場合は、再ビルドしてから実行してください。
+
+Chromium・WebKitのPC表示と、Pixel 7・iPhone 13相当のモバイル表示で、`tests/e2e`の同じテストを実行します。
+
+- 日英8ページの表示、言語切替先、横方向のはみ出し
+- トップ・サポートページの言語切替往復とセクション内のスクロール位置復元
+- セクション先頭が固定ヘッダーに隠れないこと、復元前にネイティブのアンカー移動を予約しないこと
+- 読み込み中の操作で復元を中止し、復元後のキーボード・スクロールバー相当のスクロールを妨げないこと
+- `sessionStorage`を利用できない場合のセクション移動
+- キーボードでの本文への移動、フッターからの主要ページへの移動
+- スクロールに応じた製品画像の読み込み
+- 幅320pxでのFAQの開閉とEnter・Spaceキー操作
+- 各テスト中の未処理JavaScriptエラー
+
+テストはライトモードと動きを抑える設定で実行します。画像差分比較、ダークモード、実機Safari、Cloudflareのレスポンスヘッダー・CSP適用はこのスイートの検証範囲に含みません。公開環境の確認は後述のCloudflareプレビュー検証で行ってください。
+
+サポートページの復元テストは画面の高さを400pxにし、日英どちらもセクションが画面内に収まらないことを確認します。単なるアンカー移動だけでは通らない構成です。横幅は`innerWidth`ではなく`document.documentElement.clientWidth`と設定した画面幅を基準に検証します。
+
+読書位置を保存できた場合はハッシュなしで言語を切り替え、読み込み完了後に一度だけ位置を復元してから`history.replaceState`でURLへハッシュを追加します。ブラウザーによる遅いアンカー移動を予約せず、復元後はスクロールを補正しません。読み込み中の入力やスクロールは復元を中止します。ストレージを利用できない場合は、通常のアンカー移動にフォールバックします。
+
+ページ遷移の開始設定を`public/styles/view-transitions.css`で先に読み込み、外部の通常スクリプト`public/scripts/view-transitions.js`が最初の描画前に`pageswap` / `pagereveal`を登録します。省略されたアニメーションの`ready`の拒否は、そのPromiseで処理します。テスト側では例外を除外せず、すべての`pageerror`を失敗として扱います。遷移アニメーション自体の見た目は、このテストでは判定しません。
+
+```sh
+# ブラウザーを絞って実行
+npm run test:e2e -- --project=chromium
+# UIで実行・確認
+npm run test:e2e:ui
+# 直前のHTMLレポートを開く
+npx playwright show-report
+```
+
+CIのOSはUbuntu 24.04に固定し、`ubuntu-latest`の切替でブラウザーのネイティブ依存が変わらないようにします。`npx playwright install-deps chromium webkit`と`npx playwright install --only-shell chromium webkit`を別ステップで実行し、OSパッケージとブラウザー本体の取得状況を分けて確認できます。4構成は`Validate`内で実行します。ブラウザーのキャッシュは、復元時間と再ダウンロード時間が同程度でLinuxのOS依存はキャッシュできないという[公式の説明](https://playwright.dev/docs/ci#caching-browsers)に従い追加していません。
+
+`CI=true`または`CI=1`のときは、安定性を優先して1ワーカー・再試行1回とし、再試行だけ成功した不安定なテストも失敗として扱います。`CI=false`・`CI=0`・未設定では通常のローカル設定になり、ワーカー数はPlaywrightの既定値を使用します。必要に応じて`npm run test:e2e -- --workers=2`で調整できます。
+
+失敗時のスクリーンショットと再試行時のTrace、HTMLレポートを`playwright-report`アーティファクトとして7日間保存します。ローカルの`playwright-report/`と`test-results/`はGit管理対象外・型チェックの対象外です。再試行のないローカル実行でTraceが必要な場合は、`npm run test:e2e -- --trace retain-on-failure`を使ってください。
 
 ## 依存関係の更新
 
@@ -55,7 +103,7 @@ DependabotがnpmとGitHub Actionsを毎週月曜03:00 UTCに確認します。�
 - セキュリティ更新も同じ分類を適用し、自動化の対象外なら優先してレビューします。
 - `sharp`などの開発依存も画像生成やビルドに影響するため、開発依存という理由だけで検証を省略しません。
 
-CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
+CIの`Validate`は、`.nvmrc`のNode.jsを使用し、`npm ci`、自動マージ判定のテスト、型チェック、ビルド、生成物の確認、規約契約の異常ケース、配信テスト、Playwrightのブラウザーテストを実行します。ActionsはコミットSHAに固定し、その更新もDependabotで検知します。
 
 ### Dependabot PRを最新化する運用
 

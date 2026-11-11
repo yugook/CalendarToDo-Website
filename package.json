@@ -15,6 +15,8 @@
     "test:automation": "node --test tests/dependabot-auto-merge.test.mjs",
     "test:legal": "node --test tests/legal-contract.test.mjs",
     "test:smoke": "node --test scripts/smoke-test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "generate:og": "node scripts/generate-og-images.mjs",
     "preview": "astro preview",
     "astro": "astro"
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "@playwright/test": "^1.65.0",
     "parse5": "^8.0.1",
     "sharp": "^0.35.5",
     "typescript": "^6.0.3"

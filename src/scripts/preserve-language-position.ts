@@ -12,10 +12,14 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 const getSections = () =>
   Array.from(document.querySelectorAll<HTMLElement>('main section[id]'));
 
+const getHeaderHeight = () =>
+  document.querySelector<HTMLElement>('.site-header')?.getBoundingClientRect().height ?? 0;
+
 const getCurrentSection = () => {
   const sections = getSections();
+  const headerHeight = getHeaderHeight();
   const referencePosition =
-    window.scrollY + Math.min(window.innerHeight * 0.3, 160);
+    window.scrollY + headerHeight + Math.min((window.innerHeight - headerHeight) * 0.3, 160);
 
   return sections.reduce<HTMLElement | undefined>((current, section) => {
     return section.offsetTop <= referencePosition ? section : current;
@@ -30,16 +34,16 @@ const savePosition = (link: HTMLAnchorElement) => {
   }
 
   const targetURL = new URL(link.href, window.location.href);
+  const headerHeight = getHeaderHeight();
   const scrollableHeight = Math.max(
-    section.offsetHeight - window.innerHeight,
+    section.offsetHeight - (window.innerHeight - headerHeight),
     0,
   );
-  const offset = Math.max(window.scrollY - section.offsetTop, 0);
+  const offset = Math.max(window.scrollY + headerHeight - section.offsetTop, 0);
   const progress =
     scrollableHeight > 0 ? clamp(offset / scrollableHeight, 0, 1) : 0;
 
   targetURL.hash = section.id;
-  link.href = targetURL.toString();
 
   const position = {
     path: targetURL.pathname,
@@ -49,9 +53,13 @@ const savePosition = (link: HTMLAnchorElement) => {
 
   try {
     window.sessionStorage.setItem(storageKey, JSON.stringify(position));
+    // Do not queue a native fragment jump that could overwrite the saved progress.
+    // The destination adds the fragment with replaceState after restoring once.
+    targetURL.hash = '';
   } catch {
     // The hash still preserves the section when browser storage is unavailable.
   }
+  link.href = targetURL.toString();
 };
 
 const restorePosition = () => {
@@ -68,7 +76,7 @@ const restorePosition = () => {
     return;
   }
 
-  if (!position || position.path !== window.location.pathname) {
+  if (!position || position.path !== window.location.pathname || !Number.isFinite(position.progress)) {
     return;
   }
 
@@ -78,25 +86,49 @@ const restorePosition = () => {
     return;
   }
 
+  const controller = new AbortController();
+  const stopRestoring = () => controller.abort();
+
   const restore = () => {
+    if (controller.signal.aborted) return;
+    stopRestoring();
+    // Native scrollbar input may scroll without a DOM pointer or wheel event.
+    if (Math.abs(window.scrollY) > 1) return;
+
+    const headerHeight = getHeaderHeight();
     const scrollableHeight = Math.max(
-      section.offsetHeight - window.innerHeight,
+      section.offsetHeight - (window.innerHeight - headerHeight),
       0,
     );
-    const targetPosition =
-      section.offsetTop + scrollableHeight * clamp(position.progress, 0, 1);
+    const targetPosition = Math.max(
+      section.offsetTop - headerHeight + scrollableHeight * clamp(position.progress, 0, 1),
+      0,
+    );
 
-    window.scrollTo({ top: targetPosition, behavior: 'auto' });
+    if (Math.abs(window.scrollY - targetPosition) > 1) {
+      window.scrollTo({ top: targetPosition, behavior: 'auto' });
+    }
+    const targetURL = new URL(window.location.href);
+    targetURL.hash = section.id;
+    window.history.replaceState(window.history.state, '', targetURL);
   };
 
+  // Respect user input while loading, including scrolling via native UI.
+  // All listeners are removed before the one-shot restoration.
+  for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+    window.addEventListener(type, stopRestoring, {
+      capture: true, passive: true, signal: controller.signal,
+    });
+  }
+  window.addEventListener('scroll', () => {
+    if (Math.abs(window.scrollY) > 1) stopRestoring();
+  }, { passive: true, signal: controller.signal });
+  window.addEventListener('pagehide', stopRestoring, { once: true, signal: controller.signal });
+
   if (document.readyState === 'complete') {
-    window.requestAnimationFrame(restore);
+    restore();
   } else {
-    window.addEventListener(
-      'load',
-      () => window.requestAnimationFrame(restore),
-      { once: true },
-    );
+    window.addEventListener('load', restore, { once: true, signal: controller.signal });
   }
 };
 
