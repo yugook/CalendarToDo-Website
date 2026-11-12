@@ -9,6 +9,7 @@ Calendar ToDo公式サイトのソースコードです。AstroのMinimal構成�
 
 - Node.js 24.18.0（`.nvmrc`）
 - npm 11系
+- Python 3（`npm run test:zap`のフック制御テスト）
 
 ## 開発
 
@@ -25,6 +26,7 @@ npm run check
 npm run build
 npm run check:dist
 npm run test:automation
+npm run test:zap
 npm run test:legal
 npm run test:smoke
 npm run test:e2e
@@ -159,6 +161,46 @@ Dependabotの自動rebaseは既定で有効です。定期チェックや競合�
 - Build output directory: `dist`
 - Root directory: `/`
 - Node.js version: `24.18.0`
+
+### ZAP Baseline（手動実行）
+
+GitHub Actionsの`ZAP Baseline`は、Cloudflare Pagesへデプロイされたサイトを受動検査します。PR・push・定期実行では起動せず、既存の`Validate`やDependabotの必須チェックには追加しません。Full Scan、攻撃ペイロード、Ajax Spider、フォーム送信、Issueの自動作成は使用しません。
+
+対象コミットの40桁SHAを入力すると、GitHub上の成功した`Cloudflare Pages`チェック（Cloudflare App ID `85455`）から、このプロジェクトの固定プレビューURLを取得します。コミットSHA・チェックID・プレビューURLをレポートに記録します。任意URL、本番独自ドメイン、他プロジェクト、更新されるブランチ別エイリアスへの切り替えは行いません。
+
+#### 初回設定：Cloudflare Access
+
+現在のプレビューはCloudflare Accessで保護されています。初回の実環境スキャン前に、次を設定します。
+
+1. Cloudflare Zero TrustのService Tokensで、スキャン専用のサービス認証トークンを作成します。
+2. このサイトの固定プレビューURLを保護するAccessアプリに、そのトークンを許可する**Service Auth**ポリシーを追加します。通常のユーザーログイン用ポリシーは維持します。
+3. このGitHubリポジトリのSettings → Secrets and variables → Actionsで、次のRepository secretsを登録します。
+   - `CF_ACCESS_CLIENT_ID`: Client ID
+   - `CF_ACCESS_CLIENT_SECRET`: Client Secret
+4. トークンの期限切れ・更新時には、Accessの設定とGitHub Secretsを更新します。値をコード、Issue、PR本文へ記載しません。
+
+詳細は[Cloudflareのサービス認証手順](https://developers.cloudflare.com/cloudflare-one/access-controls/service-credentials/service-tokens/)を参照してください。Cloudflare APIトークンは不要です。サービス認証ヘッダーは、検査対象の固定プレビューに限定して付与します。認証失敗のリダイレクトやログイン画面をサイトの検査成功として扱いません。Accessで保護されていない環境では両Secretを省略できますが、片方だけの設定は拒否します。
+
+#### 実行・結果の確認
+
+新しい手動ワークフローは、GitHubの仕様上`main`へマージされた後に利用できます。
+
+1. 検査したいコミットの`Cloudflare Pages`チェックが成功していることを確認し、その**コミットの40桁SHA**を取得します。
+2. Actions → `ZAP Baseline` → Run workflowで、ワークフローのブランチに`main`を選び、`commit_sha`を入力します。CLIからも実行できます。
+
+   ```sh
+   gh workflow run zap-baseline.yml --ref main -f commit_sha='40桁のコミットSHAに置き換える'
+   ```
+
+3. 実行のSummaryと`zap-baseline-<run ID>-<attempt>`アーティファクトを確認します。HTML・JSONレポート、検査対象の情報、必須URLの到達結果、訪問URL一覧、終了コードを7日間保存します。ZAPのセッションや認証ヘッダーを含む生の通信履歴はアップロードしません。
+
+日英8ページ、`/legal/policy.json`、`/404.html`、存在しないパスの11 URLを、ZAP経由で明示的に取得してからクロールします。通常ページ・JSONはHTTP 200、存在しないパスはHTTP 404を確認し、HTML本文やJSONの内容も確認します。`/404.html`などの正規化リダイレクトは同じプレビュー内だけ許可します。クロールは1分、ZAPの起動・受動解析待ちはそれぞれ最大5分、ワークフロー全体は15分に制限します。
+
+初期段階では全ルールを既定のWARNとして扱い、警告のみの終了コード`2`はレポートを残して成功にします。終了コード`0`でも、必須URLの未取得、認証・通信失敗、受動解析の未完了、範囲外の訪問、レポート欠落は失敗です。その他の終了コードも失敗にします。警告の重要度・対応方針を確認してから、FAIL条件や定期実行、必須チェックへの追加を別途判断します。
+
+ZAPは`2.17.0`の公式イメージをダイジェストに固定し、`-silent`で起動時のアドオン自動更新を止め、イメージ同梱の検査ルールを使用します。更新時はワークフローのバージョンとダイジェストを合わせて変更し、ローカルの`npm run test:zap`と、認証設定済みプレビューへの手動スキャンを確認してください。`test:zap`は対象選択・認証失敗・取得漏れ・終了コード・フックの制御を外部通信なしで検証します。実際のZAPやCloudflare配信の検証とは区別します。
+
+プレビューの結果は本番独自ドメインのHSTSなどを保証しません。また、CSP Report-Onlyの検出だけでは強制適用やブラウザー表示の互換性は確認できません。公開環境のヘッダー確認と、次のCSP移行手順も併用します。Baselineの範囲と終了コードは[ZAP公式仕様](https://www.zaproxy.org/docs/docker/baseline-scan/)を参照してください。
 
 ### セキュリティヘッダー
 
