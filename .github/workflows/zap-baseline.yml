@@ -1,0 +1,89 @@
+name: ZAP Baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Cloudflareでデプロイ成功済みのコミットSHA（40桁）'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: zap-baseline-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: Manual baseline report
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      # ZAP 2.17.0, multi-platform image; review version/digest together when updating.
+      ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+
+    steps:
+      - name: Checkout scanner configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify deployment and preview access
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZAP_TARGET_SHA: ${{ inputs.commit_sha }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: node scripts/zap-baseline.mjs prepare
+
+      - name: Run passive baseline scan
+        id: scan
+        timeout-minutes: 10
+        env:
+          ZAP_TARGET_URL: ${{ steps.target.outputs.url }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          # The container runs as the runner user so reports remain readable.
+          # Capture the documented exit code; summarize rejects execution failures.
+          set +e
+          docker run --rm --user "$(id -u):$(id -g)" --workdir /zap/wrk \
+            --env HOME=/tmp \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/zap-report,target=/zap/wrk" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/.zap,target=/zap/config,readonly" \
+            --env CF_ACCESS_CLIENT_ID --env CF_ACCESS_CLIENT_SECRET \
+            "$ZAP_IMAGE" zap-baseline.py \
+            -t "$ZAP_TARGET_URL" -m 1 -T 5 --autooff \
+            -z "-silent -dir /zap/wrk/.zap-home" \
+            -n target.context --hook /zap/config/baseline-hooks.py \
+            -r report.html -J report.json
+          result=$?
+          set -e
+          printf '%s\n' "$result" > zap-report/exit-code.txt
+
+      - name: Check scan completion and summarize alerts
+        if: ${{ !cancelled() && steps.scan.outcome != 'skipped' }}
+        run: node scripts/zap-baseline.mjs summarize
+
+      - name: Upload baseline report and coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: zap-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            zap-report/*.html
+            zap-report/*.json
+            zap-report/*.md
+            zap-report/exit-code.txt
+          if-no-files-found: warn
+          retention-days: 7
