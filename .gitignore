@@ -5,6 +5,8 @@ dist/
 .wrangler/
 playwright-report/
 test-results/
+zap-report/
+__pycache__/
 
 # Local environment variables and secrets
 .env

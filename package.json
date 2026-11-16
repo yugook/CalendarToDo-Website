@@ -13,6 +13,7 @@
     "check": "astro check",
     "check:dist": "node scripts/check-dist.mjs",
     "test:automation": "node --test tests/dependabot-auto-merge.test.mjs",
+    "test:zap": "node --test tests/zap-baseline.test.mjs && python3 -m unittest discover -s tests -p 'test_zap_baseline.py'",
     "test:legal": "node --test tests/legal-contract.test.mjs",
     "test:smoke": "node --test scripts/smoke-test.mjs",
     "test:e2e": "playwright test",

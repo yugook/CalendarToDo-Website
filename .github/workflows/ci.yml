@@ -41,6 +41,9 @@ jobs:
       - name: Test auto-merge policy
         run: npm run test:automation
 
+      - name: Test ZAP target and completion controls
+        run: npm run test:zap
+
       - name: Type check
         run: npm run check
 
